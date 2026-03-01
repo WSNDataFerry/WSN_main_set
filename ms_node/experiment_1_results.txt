@@ -1,0 +1,20 @@
+========================================
+   EXPERIMENT 1: STABILITY RESULTS
+========================================
+
+[ Node2 ]
+  CH Changes Detected: 1
+  Valid CHs Seen: [3125534146]
+  No Sensor Data Packets Received (Expected if not CH)
+
+[ Node3 ]
+  CH Changes Detected: 1
+  Valid CHs Seen: [3125534146]
+  No Sensor Data Packets Received (Expected if not CH)
+
+[ Node1 ]
+  CH Changes Detected: 0
+  Valid CHs Seen: []
+  Packet Delivery Ratio (Data Received by this Node):
+    -> From Node 3125566106: 379.17% (182 packets, Seq 9-56)
+    -> From Node 3125566642: 325.0% (169 packets, Seq 8-59)

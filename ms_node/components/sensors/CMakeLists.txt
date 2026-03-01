@@ -1,0 +1,21 @@
+idf_component_register(
+    SRCS
+        "src/sensors.c"
+        "src/i2c_bus.c"
+        "src/bme280_sensor.c"
+        "src/aht21_sensor.c"
+        "src/ens160_sensor.c"
+        "src/gy271_sensor.c"
+        "src/ina219_sensor.c"
+        "src/inmp441_sensor.c"
+        "src/sensor_config.c"
+    INCLUDE_DIRS
+        "include"
+    REQUIRES
+        driver
+        freertos
+        esp_common
+        log
+        nvs_flash
+        esp_timer
+)

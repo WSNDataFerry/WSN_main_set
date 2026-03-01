@@ -1,0 +1,336 @@
+[01:43:21] 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:22] I (1314557) METRICS: [STELLAR] Lyapunov weights: B=0.340 U=0.176 T=0.299 L=0.184, V=0.00003, Conv=1
+[01:43:22] I (1314557) METRICS: [STELLAR] Pareto rank=1/2, Centrality=0.200
+[01:43:22] I (1314557) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.762 u_T=0.959 u_L=0.963, base=0.939, κ=0.714, ρ=0.010, Ψ=0.6806
+[01:43:22] I (1314567) main: STATUS: State=CH, Role=CH, CH=0, Size=2
+[01:43:22] I (1314657) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:22] I (1314657) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:22] I (1314667) BLE: Advertising packet: node_id=3125534146, seq=154, HMAC=80, packet_size=20
+[01:43:22] I (1314667) NimBLE: GAP procedure initiated: stop advertising.
+[01:43:22] 
+[01:43:22] I (1314677) NimBLE: GAP procedure initiated: advertise;
+[01:43:22] I (1314677) NimBLE: disc_mode=2
+[01:43:22] I (1314677) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96
+[01:43:22] I (1314687) NimBLE:
+[01:43:22] 
+[01:43:22] I (1314757) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:22] I (1314757) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:22] I (1314957) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:22] I (1314957) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:22] W (1314977) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:22] W (1314977) BLE: Received packet HMAC: 9a, mfg_data_len=20, packet_size=20
+[01:43:22] W (1314987) BLE: HMAC check: computed=9a, received=9a, diff=0, node_id=3125566642, seq_num=68
+[01:43:22] I (1314987) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:22] I (1314997) BLE: Discovered neighbor: node_id=3125566642, score=0.68, rssi=-23, seq=68
+[01:43:22] I (1315007) METRICS: [METRICS] Trust Update Input: Rep=0.870, Current PDR=0.756, Current HSR=1.000
+[01:43:22] I (1315017) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.270
+[01:43:22] I (1315057) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:22] I (1315057) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:22] I (1315157) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:22] I (1315157) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:22] W (1315177) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:22] I (1315257) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:22] I (1315257) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:22] W (1315277) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:22] W (1315277) BLE: Received packet HMAC: 19, mfg_data_len=20, packet_size=20
+[01:43:22] W (1315277) BLE: HMAC check: computed=19, received=19, diff=0, node_id=3125566106, seq_num=252
+[01:43:22] I (1315287) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:22] I (1315297) BLE: Discovered neighbor: node_id=3125566106, score=0.69, rssi=-25, seq=252
+[01:43:22] I (1315307) METRICS: [METRICS] Trust Update Input: Rep=0.880, Current PDR=0.730, Current HSR=1.000
+[01:43:22] I (1315317) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.293
+[01:43:22] W (1315367) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:22] I (1315457) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:22] I (1315457) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:22] W (1315487) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:23] W (1315547) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:23] W (1315567) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:23] W (1315577) BLE: Received packet HMAC: 9a, mfg_data_len=20, packet_size=20
+[01:43:23] W (1315577) BLE: HMAC check: computed=9a, received=9a, diff=0, node_id=3125566642, seq_num=68
+[01:43:23] I (1315587) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:23] I (1315587) BLE: Discovered neighbor: node_id=3125566642, score=0.68, rssi=-22, seq=68
+[01:43:23] I (1315597) METRICS: [METRICS] Trust Update Input: Rep=0.870, Current PDR=0.707, Current HSR=1.000
+[01:43:23] I (1315607) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.263
+[01:43:23] I (1315617) METRICS: [STELLAR] Lyapunov weights: B=0.340 U=0.176 T=0.300 L=0.184, V=0.00003, Conv=1
+[01:43:23] I (1315627) METRICS: [STELLAR] Pareto rank=1/2, Centrality=0.200
+[01:43:23] I (1315627) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.762 u_T=0.960 u_L=0.960, base=0.939, κ=0.714, ρ=0.010, Ψ=0.6804
+[01:43:23] I (1315637) main: STATUS: State=CH, Role=CH, CH=0, Size=2
+[01:43:23] I (1315657) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:23] I (1315657) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:23] W (1315677) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:23] W (1315697) main: Battery not detected (USB Power?), assuming 100%
+[01:43:23] I (1315697) main: PME batt=100% mode=NORMAL
+[01:43:23] I (1315697) main: Smart Sleep: Waiting 2000 ms (BLE Active)
+[01:43:23] I (1315737) BLE: Advertising packet: node_id=3125534146, seq=155, HMAC=f4, packet_size=20
+[01:43:23] I (1315737) NimBLE: GAP procedure initiated: stop advertising.
+[01:43:23] 
+[01:43:23] W (1315767) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:23] I (1315847) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:23] I (1315857) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:23] W (1315877) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:23] W (1315877) BLE: Received packet HMAC: 19, mfg_data_len=20, packet_size=20
+[01:43:23] W (1315887) BLE: HMAC check: computed=19, received=19, diff=0, node_id=3125566106, seq_num=252
+[01:43:23] I (1315887) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:23] I (1315897) BLE: Discovered neighbor: node_id=3125566106, score=0.69, rssi=-29, seq=252
+[01:43:23] I (1315907) METRICS: [METRICS] Trust Update Input: Rep=0.880, Current PDR=0.737, Current HSR=1.000
+[01:43:23] I (1315917) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.237
+[01:43:23] W (1316077) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:24] I (1316647) METRICS: [STELLAR] Lyapunov weights: B=0.340 U=0.176 T=0.300 L=0.184, V=0.00003, Conv=1
+[01:43:24] I (1316647) METRICS: [STELLAR] Pareto rank=2/2, Centrality=0.200
+[01:43:24] I (1316647) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.762 u_T=0.961 u_L=0.964, base=0.940, κ=0.714, ρ=0.020, Ψ=0.6912
+[01:43:24] I (1316657) main: STATUS: State=CH, Role=CH, CH=0, Size=2
+[01:43:24] I (1316737) BLE: Advertising packet: node_id=3125534146, seq=156, HMAC=00, packet_size=20
+[01:43:24] I (1316737) NimBLE: GAP procedure initiated: stop advertising.
+[01:43:24] 
+[01:43:24] I (1316737) NimBLE: GAP procedure initiated: advertise;
+[01:43:24] I (1316737) NimBLE: disc_mode=2
+[01:43:24] I (1316747) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96
+[01:43:24] I (1316757) NimBLE:
+[01:43:24] 
+[01:43:24] W (1317067) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:24] W (1317067) BLE: Received packet HMAC: d7, mfg_data_len=20, packet_size=20
+[01:43:24] W (1317077) BLE: HMAC check: computed=d7, received=d7, diff=0, node_id=3125566642, seq_num=70
+[01:43:24] I (1317077) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:24] I (1317087) BLE: Discovered neighbor: node_id=3125566642, score=0.67, rssi=-26, seq=70
+[01:43:24] I (1317097) METRICS: [METRICS] Trust Update Input: Rep=0.870, Current PDR=0.763, Current HSR=1.000
+[01:43:24] I (1317107) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.263
+[01:43:24] W (1317207) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:24] W (1317267) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:24] W (1317267) BLE: Received packet HMAC: 99, mfg_data_len=20, packet_size=20
+[01:43:24] W (1317277) BLE: HMAC check: computed=99, received=99, diff=0, node_id=3125566106, seq_num=254
+[01:43:24] I (1317277) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:24] I (1317287) BLE: Discovered neighbor: node_id=3125566106, score=0.69, rssi=-21, seq=254
+[01:43:24] I (1317297) METRICS: [METRICS] Trust Update Input: Rep=0.870, Current PDR=0.737, Current HSR=1.000
+[01:43:24] I (1317307) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.287
+[01:43:24] W (1317397) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:24] W (1317467) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:24] W (1317477) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:25] I (1317667) METRICS: [STELLAR] Lyapunov weights: B=0.341 U=0.176 T=0.300 L=0.184, V=0.00004, Conv=1
+[01:43:25] I (1317667) METRICS: [STELLAR] Pareto rank=2/2, Centrality=0.200
+[01:43:25] I (1317667) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.762 u_T=0.962 u_L=0.956, base=0.939, κ=0.714, ρ=0.020, Ψ=0.6904
+[01:43:25] W (1317677) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:25] W (1317687) BLE: Received packet HMAC: d7, mfg_data_len=20, packet_size=20
+[01:43:25] W (1317697) BLE: HMAC check: computed=d7, received=d7, diff=0, node_id=3125566642, seq_num=70
+[01:43:25] I (1317697) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:25] I (1317707) BLE: Discovered neighbor: node_id=3125566642, score=0.67, rssi=-26, seq=70
+[01:43:25] I (1317717) METRICS: [METRICS] Trust Update Input: Rep=0.870, Current PDR=0.713, Current HSR=1.000
+[01:43:25] I (1317727) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.258
+[01:43:25] W (1317737) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:25] I (1317737) main: STATUS: State=CH, Role=CH, CH=0, Size=2
+[01:43:25] W (1317747) main: Battery not detected (USB Power?), assuming 100%
+[01:43:25] I (1317747) main: PME batt=100% mode=NORMAL
+[01:43:25] I (1317757) BLE: Advertising packet: node_id=3125534146, seq=157, HMAC=a3, packet_size=20
+[01:43:25] I (1317767) NimBLE: GAP procedure initiated: stop advertising.
+[01:43:25] 
+[01:43:25] I (1317767) main: Smart Sleep: Waiting 2000 ms (BLE Active)
+[01:43:25] W (1317797) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:25] W (1317867) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:25] W (1317877) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:25] W (1317877) BLE: Received packet HMAC: 99, mfg_data_len=20, packet_size=20
+[01:43:25] W (1317887) BLE: HMAC check: computed=99, received=99, diff=0, node_id=3125566106, seq_num=254
+[01:43:25] I (1317897) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:25] I (1317897) BLE: Discovered neighbor: node_id=3125566106, score=0.69, rssi=-21, seq=254
+[01:43:25] I (1317907) METRICS: [METRICS] Trust Update Input: Rep=0.870, Current PDR=0.742, Current HSR=1.000
+[01:43:25] I (1317917) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.233
+[01:43:25] W (1318007) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:25] W (1318067) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:26] I (1318697) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:26] I (1318697) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:26] I (1318747) METRICS: [STELLAR] Lyapunov weights: B=0.341 U=0.176 T=0.300 L=0.183, V=0.00004, Conv=1
+[01:43:26] I (1318747) METRICS: [STELLAR] Pareto rank=2/2, Centrality=0.200
+[01:43:26] I (1318747) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.762 u_T=0.961 u_L=0.964, base=0.940, κ=0.714, ρ=0.020, Ψ=0.6913
+[01:43:26] I (1318757) main: STATUS: State=CH, Role=CH, CH=0, Size=2
+[01:43:26] I (1318767) BLE: Advertising packet: node_id=3125534146, seq=158, HMAC=61, packet_size=20
+[01:43:26] I (1318767) NimBLE: GAP procedure initiated: stop advertising.
+[01:43:26] 
+[01:43:26] I (1318777) NimBLE: GAP procedure initiated: advertise;
+[01:43:26] I (1318787) NimBLE: disc_mode=2
+[01:43:26] I (1318787) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96
+[01:43:26] I (1318797) NimBLE:
+[01:43:26] 
+[01:43:26] I (1318797) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:26] I (1318807) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:26] I (1318897) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:26] I (1318897) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:26] W (1318977) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:26] W (1318977) BLE: Received packet HMAC: 4f, mfg_data_len=20, packet_size=20
+[01:43:26] W (1318977) BLE: HMAC check: computed=4f, received=4f, diff=0, node_id=3125566642, seq_num=72
+[01:43:26] I (1318987) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:26] I (1318997) BLE: Discovered neighbor: node_id=3125566642, score=0.67, rssi=-26, seq=72
+[01:43:26] I (1318997) METRICS: [METRICS] Trust Update Input: Rep=0.860, Current PDR=0.767, Current HSR=1.000
+[01:43:26] I (1319007) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.259
+[01:43:26] I (1319017) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:26] I (1319027) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:26] I (1319097) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:26] I (1319097) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:26] W (1319097) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:26] W (1319167) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:26] I (1319197) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:26] I (1319197) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:26] W (1319287) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:26] W (1319287) BLE: Received packet HMAC: 0b, mfg_data_len=20, packet_size=20
+[01:43:26] W (1319297) BLE: HMAC check: computed=0b, received=0b, diff=0, node_id=3125566106, seq_num=0
+[01:43:26] I (1319297) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:26] I (1319307) BLE: Discovered neighbor: node_id=3125566106, score=0.68, rssi=-25, seq=0
+[01:43:26] I (1319317) METRICS: [METRICS] Trust Update Input: Rep=0.870, Current PDR=0.741, Current HSR=1.000
+[01:43:26] I (1319327) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.283
+[01:43:26] W (1319337) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:26] I (1319337) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:26] I (1319347) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:26] W (1319377) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:26] I (1319397) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:26] W (1319477) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:26] W (1319477) BLE: Received packet HMAC: 4f, mfg_data_len=20, packet_size=20
+[01:43:26] W (1319487) BLE: HMAC check: computed=4f, received=4f, diff=0, node_id=3125566642, seq_num=72
+[01:43:26] I (1319497) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:26] I (1319497) BLE: Discovered neighbor: node_id=3125566642, score=0.67, rssi=-22, seq=72
+[01:43:26] I (1319507) METRICS: [METRICS] Trust Update Input: Rep=0.860, Current PDR=0.717, Current HSR=1.000
+[01:43:27] I (1319517) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.255
+[01:43:27] W (1319527) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:27] I (1319527) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:27] I (1319597) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:27] I (1319597) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:27] W (1319597) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:27] W (1319667) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:27] W (1319677) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:27] I (1319687) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:27] I (1319687) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:27] I (1319787) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:27] I (1319797) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:27] W (1319807) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:27] I (1319817) METRICS: [STELLAR] Lyapunov weights: B=0.341 U=0.176 T=0.300 L=0.183, V=0.00004, Conv=1
+[01:43:27] I (1319817) METRICS: [STELLAR] Pareto rank=2/2, Centrality=0.200
+[01:43:27] I (1319817) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.762 u_T=0.960 u_L=0.961, base=0.939, κ=0.714, ρ=0.020, Ψ=0.6907
+[01:43:27] I (1319827) main: STATUS: State=CH, Role=CH, CH=0, Size=2
+[01:43:27] W (1319837) main: Battery not detected (USB Power?), assuming 100%
+[01:43:27] I (1319837) main: PME batt=100% mode=NORMAL
+[01:43:27] I (1319847) main: Smart Sleep: Waiting 2000 ms (BLE Active)
+[01:43:27] I (1319857) BLE: Advertising packet: node_id=3125534146, seq=159, HMAC=b7, packet_size=20
+[01:43:27] I (1319857) NimBLE: GAP procedure initiated: stop advertising.
+[01:43:27] 
+[01:43:27] W (1319877) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:27] W (1319877) BLE: Received packet HMAC: 0b, mfg_data_len=20, packet_size=20
+[01:43:27] W (1319887) BLE: HMAC check: computed=0b, received=0b, diff=0, node_id=3125566106, seq_num=0
+[01:43:27] I (1319897) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:27] I (1319897) BLE: Discovered neighbor: node_id=3125566106, score=0.68, rssi=-25, seq=0
+[01:43:27] I (1319907) METRICS: [METRICS] Trust Update Input: Rep=0.870, Current PDR=0.745, Current HSR=1.000
+[01:43:27] I (1319917) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.230
+[01:43:27] W (1319927) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:27] I (1319927) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:27] I (1319937) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:27] I (1319997) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:27] I (1319997) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:27] W (1320007) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:27] W (1320067) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:27] I (1320087) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:27] I (1320087) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:27] I (1320187) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:27] I (1320187) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:27] W (1320207) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:27] I (1320297) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:27] I (1320297) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:27] I (1320397) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:27] I (1320397) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:27] I (1320487) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:27] I (1320487) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:28] I (1320587) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:28] I (1320587) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:28] I (1320687) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:28] I (1320687) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:28] I (1320787) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:28] I (1320787) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:28] I (1320837) METRICS: [STELLAR] Lyapunov weights: B=0.341 U=0.176 T=0.300 L=0.183, V=0.00003, Conv=1
+[01:43:28] I (1320837) METRICS: [STELLAR] Pareto rank=2/2, Centrality=0.200
+[01:43:28] I (1320837) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.762 u_T=0.961 u_L=0.965, base=0.940, κ=0.714, ρ=0.020, Ψ=0.6914
+[01:43:28] I (1320847) main: STATUS: State=CH, Role=CH, CH=0, Size=2
+[01:43:28] I (1320867) BLE: Advertising packet: node_id=3125534146, seq=160, HMAC=15, packet_size=20
+[01:43:28] I (1320867) NimBLE: GAP procedure initiated: stop advertising.
+[01:43:28] 
+[01:43:28] I (1320867) NimBLE: GAP procedure initiated: advertise;
+[01:43:28] I (1320877) NimBLE: disc_mode=2
+[01:43:28] I (1320877) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96
+[01:43:28] I (1320887) NimBLE:
+[01:43:28] 
+[01:43:28] I (1320977) BLE: First 20 bytes: 02 01 1e 1b ff 75 00 42 04 01 40 4e f8 3f 51 9b 7c 07 fa 3f
+[01:43:28] I (1320977) BLE: First 20 bytes: 02 0a 09 1b 08 5b 54 56 5d 20 53 61 6d 73 75 6e 67 20 34 20
+[01:43:28] W (1321187) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:28] W (1321187) BLE: Received packet HMAC: 2e, mfg_data_len=20, packet_size=20
+[01:43:28] W (1321187) BLE: HMAC check: computed=2e, received=2e, diff=0, node_id=3125566642, seq_num=74
+[01:43:28] I (1321197) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:28] I (1321207) BLE: Discovered neighbor: node_id=3125566642, score=0.67, rssi=-22, seq=74
+[01:43:28] I (1321217) METRICS: [METRICS] Trust Update Input: Rep=0.870, Current PDR=0.770, Current HSR=1.000
+[01:43:28] I (1321217) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.257
+[01:43:28] W (1321387) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:28] W (1321387) BLE: Received packet HMAC: a7, mfg_data_len=20, packet_size=20
+[01:43:28] W (1321387) BLE: HMAC check: computed=a7, received=a7, diff=0, node_id=3125566106, seq_num=2
+[01:43:28] I (1321397) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:28] I (1321397) BLE: Discovered neighbor: node_id=3125566106, score=0.68, rssi=-26, seq=2
+[01:43:28] I (1321407) METRICS: [METRICS] Trust Update Input: Rep=0.880, Current PDR=0.743, Current HSR=1.000
+[01:43:28] I (1321417) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.281
+[01:43:28] W (1321427) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:29] W (1321577) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:29] W (1321587) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:29] W (1321687) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:29] W (1321687) BLE: Received packet HMAC: 2e, mfg_data_len=20, packet_size=20
+[01:43:29] W (1321697) BLE: HMAC check: computed=2e, received=2e, diff=0, node_id=3125566642, seq_num=74
+[01:43:29] I (1321697) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:29] I (1321707) BLE: Discovered neighbor: node_id=3125566642, score=0.67, rssi=-22, seq=74
+[01:43:29] I (1321717) METRICS: [METRICS] Trust Update Input: Rep=0.870, Current PDR=0.719, Current HSR=1.000
+[01:43:29] I (1321727) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.253
+[01:43:29] W (1321777) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:29] I (1321857) METRICS: [STELLAR] Lyapunov weights: B=0.341 U=0.176 T=0.301 L=0.183, V=0.00003, Conv=1
+[01:43:29] I (1321857) METRICS: [STELLAR] Pareto rank=2/2, Centrality=0.200
+[01:43:29] I (1321857) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.762 u_T=0.962 u_L=0.961, base=0.940, κ=0.714, ρ=0.020, Ψ=0.6911
+[01:43:29] I (1321867) main: STATUS: State=CH, Role=CH, CH=0, Size=2
+[01:43:29] W (1321877) main: Battery not detected (USB Power?), assuming 100%
+[01:43:29] I (1321877) main: PME batt=100% mode=NORMAL
+[01:43:29] I (1321887) BLE: Advertising packet: node_id=3125534146, seq=161, HMAC=7a, packet_size=20
+[01:43:29] W (1321887) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:29] I (1321897) NimBLE: GAP procedure initiated: stop advertising.
+[01:43:29] 
+[01:43:29] W (1321907) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:29] W (1321907) BLE: Received packet HMAC: a7, mfg_data_len=20, packet_size=20
+[01:43:29] W (1321917) BLE: HMAC check: computed=a7, received=a7, diff=0, node_id=3125566106, seq_num=2
+[01:43:29] I (1321927) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:29] I (1321937) BLE: Discovered neighbor: node_id=3125566106, score=0.68, rssi=-29, seq=2
+[01:43:29] I (1321937) METRICS: [METRICS] Trust Update Input: Rep=0.880, Current PDR=0.747, Current HSR=1.000
+[01:43:29] I (1321947) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.228
+[01:43:29] I (1321957) main: Smart Sleep: Waiting 2000 ms (BLE Active)
+[01:43:29] W (1322097) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:30] I (1322877) METRICS: [STELLAR] Lyapunov weights: B=0.341 U=0.176 T=0.301 L=0.183, V=0.00003, Conv=1
+[01:43:30] I (1322877) METRICS: [STELLAR] Pareto rank=2/2, Centrality=0.200
+[01:43:30] I (1322877) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.762 u_T=0.963 u_L=0.965, base=0.941, κ=0.714, ρ=0.020, Ψ=0.6918
+[01:43:30] I (1322887) main: STATUS: State=CH, Role=CH, CH=0, Size=2
+[01:43:30] I (1322957) BLE: Advertising packet: node_id=3125534146, seq=162, HMAC=1c, packet_size=20
+[01:43:30] I (1322957) NimBLE: GAP procedure initiated: stop advertising.
+[01:43:30] 
+[01:43:30] I (1322957) NimBLE: GAP procedure initiated: advertise;
+[01:43:30] I (1322957) NimBLE: disc_mode=2
+[01:43:30] I (1322967) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96
+[01:43:30] I (1322977) NimBLE:
+[01:43:30] 
+[01:43:30] W (1323087) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:30] W (1323087) BLE: Received packet HMAC: 5c, mfg_data_len=20, packet_size=20
+[01:43:30] W (1323087) BLE: HMAC check: computed=5c, received=5c, diff=0, node_id=3125566642, seq_num=76
+[01:43:30] I (1323097) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:30] I (1323107) BLE: Discovered neighbor: node_id=3125566642, score=0.67, rssi=-23, seq=76
+[01:43:30] I (1323117) METRICS: [METRICS] Trust Update Input: Rep=0.880, Current PDR=0.772, Current HSR=1.000
+[01:43:30] I (1323117) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.255
+[01:43:30] W (1323277) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:30] W (1323287) BLE: Received packet HMAC: d5, mfg_data_len=20, packet_size=20
+[01:43:30] W (1323287) BLE: HMAC check: computed=d5, received=d5, diff=0, node_id=3125566106, seq_num=4
+[01:43:30] I (1323297) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:30] I (1323297) BLE: Discovered neighbor: node_id=3125566106, score=0.68, rssi=-25, seq=4
+[01:43:30] I (1323307) METRICS: [METRICS] Trust Update Input: Rep=0.870, Current PDR=0.745, Current HSR=1.000
+[01:43:30] I (1323317) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.279
+[01:43:30] W (1323327) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:30] W (1323407) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:30] W (1323477) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:30] W (1323487) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:31] W (1323607) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:31] W (1323697) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[01:43:31] W (1323697) BLE: Received packet HMAC: 5c, mfg_data_len=20, packet_size=20
+[01:43:31] W (1323697) BLE: HMAC check: computed=5c, received=5c, diff=0, node_id=3125566642, seq_num=76
+[01:43:31] I (1323707) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000
+[01:43:31] I (1323707) BLE: Discovered neighbor: node_id=3125566642, score=0.67, rssi=-22, seq=76
+[01:43:31] I (1323717) METRICS: [METRICS] Trust Update Input: Rep=0.880, Current PDR=0.721, Current HSR=1.000
+[01:43:31] I (1323727) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.251

@@ -1,0 +1,13 @@
+idf_component_register(
+    SRCS
+        "lz_miniz.c"
+        "huffman.c"
+        "third_party/miniz/miniz.c"
+    INCLUDE_DIRS
+        "include"
+        "third_party/miniz"
+    PRIV_REQUIRES
+        heap
+        esp_timer
+        esp_psram
+)

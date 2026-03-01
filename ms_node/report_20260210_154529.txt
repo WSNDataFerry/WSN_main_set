@@ -1,0 +1,24 @@
+========================================
+   ANALYSIS RESULTS (Run: 20260210_154529)
+========================================
+
+[ Node1 ]
+  CH Changes Detected: 0
+  Valid CHs Seen: []
+  Packet Delivery Ratio (Data Received by this Node):
+    -> From Node 3125566642: 200.0% (6 packets, Seq 4-6)
+    -> From Node 3125566106: 400.0% (4 packets, Seq 0-0)
+
+[ Node2 ]
+  CH Changes Detected: 1
+  Valid CHs Seen: [3125534146]
+  CH Change Events:
+    - At 15:45:41.249998: CH 0 -> 3125534146
+  No Sensor Data Packets Received (Expected if not CH)
+
+[ Node3 ]
+  CH Changes Detected: 1
+  Valid CHs Seen: [3125534146]
+  CH Change Events:
+    - At 15:45:44.561296: CH 0 -> 3125534146
+  No Sensor Data Packets Received (Expected if not CH)

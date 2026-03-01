@@ -1,0 +1,17 @@
+# Device list for build/flash/monitor/optimize. Edit ports for your setup.
+# On macOS: /dev/tty.usbmodem* or /dev/cu.usbmodem*
+# On Linux: /dev/ttyUSB* or /dev/ttyACM*
+# On Windows: COM3, COM4, etc.
+
+devices:
+  - name: Node1
+    port: /dev/cu.usbmodem5ABA0603751
+    mac: "10:20:ba:4b:dd:c0"
+  - name: Node2
+    port: /dev/cu.usbmodem5ABA0605221
+    mac: "10:20:ba:4c:5c:b0"
+  - name: Node3
+    port: /dev/cu.usbmodem5ABA0607321
+    mac: "10:20:ba:4c:5a:98"
+
+baud: 115200

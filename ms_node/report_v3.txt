@@ -1,0 +1,30 @@
+[Node1] Connecting to /dev/tty.usbmodem5ABA0603751...
+[Node1] Sending CLUSTER command...
+[Node1] Timeout waiting for report.
+[Node2] Connecting to /dev/tty.usbmodem5ABA0605221...
+[Node2] Sending CLUSTER command...
+[Node3] Connecting to /dev/tty.usbmodem5ABA0607321...
+[Node3] Connection Error: [Errno 16] could not open port /dev/tty.usbmodem5ABA0607321: [Errno 16] Resource busy: '/dev/tty.usbmodem5ABA0607321'
+
+================================================================================
+CLUSTER FULL REPORT - 2026-02-10 13:06:56
+================================================================================
+
+NODE     ROLE       ID    CH    STELLAR  BATTERY  UPTIME_H TRUST  LINK_Q   MEMBERS 
+------------------------------------------------------------------------------------------
+Node1    OFFLINE/ERROR                                     
+Node2    MEMBER     3125566642 3125566106 0.8788   0.57     447.2    0.98   0.99     -       
+Node3    OFFLINE/ERROR                                     
+------------------------------------------------------------------------------------------
+ACTUAL CLUSTER HEAD: NONE / ELECTION IN PROGRESS
+================================================================================
+
+DETAILED NODE VIEWS
+================================================================================
+
+--- Node2 (ID: 3125566642) ---
+Role: MEMBER [Member (Follower)]
+MAC Address: 10:20:ba:4c:5c:b2
+Scores: Stellar=0.8788 | Composite=0.8788
+Metrics: Battery=0.57 | Trust=0.98 | LinkQ=0.99 | Uptime=447.23h
+No members visible in cluster radius.

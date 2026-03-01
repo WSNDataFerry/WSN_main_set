@@ -1,0 +1,37 @@
+[Node1] Connecting to /dev/tty.usbmodem5ABA0603751...
+[Node1] Sending CLUSTER command...
+[Node1] Timeout waiting for report.
+[Node2] Connecting to /dev/tty.usbmodem5ABA0605221...
+[Node2] Sending CLUSTER command...
+[Node3] Connecting to /dev/tty.usbmodem5ABA0607321...
+[Node3] Sending CLUSTER command...
+
+================================================================================
+CLUSTER FULL REPORT - 2026-02-10 13:02:27
+================================================================================
+
+NODE     ROLE       ID    CH    STELLAR  BATTERY  UPTIME_H TRUST  LINK_Q   MEMBERS 
+------------------------------------------------------------------------------------------
+Node1    OFFLINE/ERROR                                     
+Node2    MEMBER     3125566642 3125566106 0.9025   0.64     438.2    0.97   0.96     -       
+Node3    CH         3125566106 0     0.9158   0.69     434.0    1.00   1.00     1       
+------------------------------------------------------------------------------------------
+ACTUAL CLUSTER HEAD: Node 3125566106 (Node3)
+================================================================================
+
+DETAILED NODE VIEWS
+================================================================================
+
+--- Node2 (ID: 3125566642) ---
+Role: MEMBER [Member (Follower)]
+MAC Address: 10:20:ba:4c:5c:b2
+Scores: Stellar=0.9025 | Composite=0.9025
+Metrics: Battery=0.64 | Trust=0.97 | LinkQ=0.96 | Uptime=438.19h
+No members visible in cluster radius.
+
+--- Node3 (ID: 3125566106) ---
+Role: CH [Cluster Head (LEADER)]
+MAC Address: 10:20:ba:4c:5a:9a
+Scores: Stellar=0.9158 | Composite=0.9158
+Metrics: Battery=0.69 | Trust=1.00 | LinkQ=1.00 | Uptime=434.02h
+No members visible in cluster radius.
