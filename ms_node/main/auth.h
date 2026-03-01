@@ -41,4 +41,12 @@ bool auth_check_replay(uint64_t timestamp, uint32_t node_id);
  */
 void auth_init(void);
 
+/**
+ * @brief Provision cluster key to NVS (for production; call before auth_init
+ *        or restart). Key is stored in namespace "auth", key "cluster_key".
+ * @param key 32-byte cluster key
+ * @return true on success
+ */
+bool auth_provision_cluster_key(const uint8_t *key);
+
 #endif // AUTH_H

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 monitor_ch_rx.py — 2-minute monitor to verify CH receives sensor data from members.
-Tracks: RX Sensor Data, NO-SCHED FALLBACK sends, SEND FAILED errors, SEND FAILED=NOT_FOUND.
+Tracks: RX Sensor Data, NO-SCHED FALLBACK sends, SEND FAILED errors.
 """
 import serial
 import threading
@@ -56,9 +56,9 @@ def monitor_node(idx, port):
         # Role detection (case-insensitive)
         l = line.lower()
         if "state_ch" in l or ": ch:" in l or " ch:" in l:
-            s["Role"] = "CH"
+            s["role"] = "CH"
         elif "state_member" in l or "member:" in l:
-            s["Role"] = "NODE"
+            s["role"] = "NODE"
 
         # Node ID
         m = re.search(r"node_id=(\d+)", line)
@@ -78,7 +78,6 @@ def monitor_node(idx, port):
         if "no-sched fallback" in l or "no_sched fallback" in l:
             s["nosched_fallback"] += 1
             print(f"[N{s['node_id'] or idx+1} MBR] 📤 {line[-120:]}")
-        # match "Sent sensor data" and variants like "Sent sensor data via ESP-NOW to CH"
         if "sent sensor data" in l:
             s["send_ok"] += 1
             print(f"[N{s['node_id'] or idx+1} MBR] ✅ SENT OK: {line[-120:]}")
@@ -117,10 +116,8 @@ while time.time() - start < DURATION:
         for s in stats:
             nid = s["node_id"] or "?"
             print(f"  Node {nid} ({s['role']}@{s['port'][-16:]}): "
-                  f"RX_data={s['rx_sensor_data']} RX_comp={s['rx_compressed']} "
-                  f"SENT_OK={s['send_ok']} FAILED={s['send_failed']} "
-                  f"NOT_FOUND={s['send_failed_not_found']} "
-                  f"FALLBACK={s['nosched_fallback']} ts0={s['timestamp0_warn']}")
+                  f"RX_data={s['rx_sensor_data']} SENT_OK={s['send_ok']} "
+                  f"FAILED={s['send_failed']} FALLBACK={s['nosched_fallback']}")
         print()
     time.sleep(1)
 
@@ -145,11 +142,10 @@ for s in stats:
     print(f"  PHASE_DATA entries      : {s['phase_data_enters']}")
 
 total_ch_rx = sum(s["rx_sensor_data"] + s["rx_compressed"] for s in stats if s["role"] == "CH")
-# count all successful sends seen in logs as member sends (some nodes may log sends even while CH)
 mbr_sends = sum(s["send_ok"] for s in stats)
 print(f"\n{'='*60}")
 if total_ch_rx > 0:
-    print(f"✅ SUCCESS: CH(s) received {total_ch_rx} data packets from {mbr_sends} sends seen in logs")
+    print(f"✅ SUCCESS: CH(s) received {total_ch_rx} data packets from {mbr_sends} sends")
 else:
     print(f"❌ FAILURE: CH received 0 data packets. Sends seen={mbr_sends}")
     for s in stats:

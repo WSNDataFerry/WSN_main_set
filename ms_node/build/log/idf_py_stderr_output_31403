@@ -1,0 +1,136 @@
+In file included from /Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/lz_miniz.c:10:
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:584:24: warning: 'zError' defined but not used [-Wunused-function]
+  584 |     static const char* zError(int err)
+      |                        ^~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:576:21: warning: 'adler32' defined but not used [-Wunused-function]
+  576 |     static mz_ulong adler32(mz_ulong adler, const unsigned char *ptr, size_t buf_len)
+      |                     ^~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:571:21: warning: 'crc32' defined but not used [-Wunused-function]
+  571 |     static mz_ulong crc32(mz_ulong crc, const unsigned char *ptr, size_t buf_len)
+      |                     ^~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:565:16: warning: 'uncompress2' defined but not used [-Wunused-function]
+  565 |     static int uncompress2(unsigned char* pDest, mz_ulong* pDest_len, const unsigned char* pSource, mz_ulong* pSource_len)
+      |                ^~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:560:16: warning: 'uncompress' defined but not used [-Wunused-function]
+  560 |     static int uncompress(unsigned char* pDest, mz_ulong* pDest_len, const unsigned char* pSource, mz_ulong source_len)
+      |                ^~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:555:16: warning: 'inflateEnd' defined but not used [-Wunused-function]
+  555 |     static int inflateEnd(mz_streamp pStream)
+      |                ^~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:550:16: warning: 'inflate' defined but not used [-Wunused-function]
+  550 |     static int inflate(mz_streamp pStream, int flush)
+      |                ^~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:545:16: warning: 'inflateReset' defined but not used [-Wunused-function]
+  545 |     static int inflateReset(mz_streamp pStream)
+      |                ^~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:540:16: warning: 'inflateInit2' defined but not used [-Wunused-function]
+  540 |     static int inflateInit2(mz_streamp pStream, int window_bits)
+      |                ^~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:535:16: warning: 'inflateInit' defined but not used [-Wunused-function]
+  535 |     static int inflateInit(mz_streamp pStream)
+      |                ^~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:527:21: warning: 'compressBound' defined but not used [-Wunused-function]
+  527 |     static mz_ulong compressBound(mz_ulong source_len)
+      |                     ^~~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:523:16: warning: 'compress2' defined but not used [-Wunused-function]
+  523 |     static int compress2(unsigned char *pDest, mz_ulong *pDest_len, const unsigned char *pSource, mz_ulong source_len, int level)
+      |                ^~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:519:16: warning: 'compress' defined but not used [-Wunused-function]
+  519 |     static int compress(unsigned char *pDest, mz_ulong *pDest_len, const unsigned char *pSource, mz_ulong source_len)
+      |                ^~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:515:21: warning: 'deflateBound' defined but not used [-Wunused-function]
+  515 |     static mz_ulong deflateBound(mz_streamp pStream, mz_ulong source_len)
+      |                     ^~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:511:16: warning: 'deflateEnd' defined but not used [-Wunused-function]
+  511 |     static int deflateEnd(mz_streamp pStream)
+      |                ^~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:507:16: warning: 'deflate' defined but not used [-Wunused-function]
+  507 |     static int deflate(mz_streamp pStream, int flush)
+      |                ^~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:503:16: warning: 'deflateReset' defined but not used [-Wunused-function]
+  503 |     static int deflateReset(mz_streamp pStream)
+      |                ^~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:499:16: warning: 'deflateInit2' defined but not used [-Wunused-function]
+  499 |     static int deflateInit2(mz_streamp pStream, int level, int method, int window_bits, int mem_level, int strategy)
+      |                ^~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:495:16: warning: 'deflateInit' defined but not used [-Wunused-function]
+  495 |     static int deflateInit(mz_streamp pStream, int level)
+      |                ^~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.c: In function 'mz_compress2':
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.c:326:50: warning: comparison is always false due to limited range of data type [-Wtype-limits]
+  326 |         if ((mz_uint64)(source_len | *pDest_len) > 0xFFFFFFFFU)
+      |                                                  ^
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.c: In function 'mz_uncompress2':
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.c:569:52: warning: comparison is always false due to limited range of data type [-Wtype-limits]
+  569 |         if ((mz_uint64)(*pSource_len | *pDest_len) > 0xFFFFFFFFU)
+      |                                                    ^
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.c: At top level:
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.c:3203:9: note: '#pragma message: Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files.'
+ 3203 | #pragma message("Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files.")
+      |         ^~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.c: In function 'mz_zip_writer_add_mem_ex_v2':
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.c:6326:38: warning: comparison is always false due to limited range of data type [-Wtype-limits]
+ 6326 |             if (((mz_uint64)buf_size > 0xFFFFFFFF) || (uncomp_size > 0xFFFFFFFF))
+      |                                      ^
+In file included from /Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.c:1:
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h: At top level:
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:584:24: warning: 'zError' defined but not used [-Wunused-function]
+  584 |     static const char* zError(int err)
+      |                        ^~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:576:21: warning: 'adler32' defined but not used [-Wunused-function]
+  576 |     static mz_ulong adler32(mz_ulong adler, const unsigned char *ptr, size_t buf_len)
+      |                     ^~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:571:21: warning: 'crc32' defined but not used [-Wunused-function]
+  571 |     static mz_ulong crc32(mz_ulong crc, const unsigned char *ptr, size_t buf_len)
+      |                     ^~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:565:16: warning: 'uncompress2' defined but not used [-Wunused-function]
+  565 |     static int uncompress2(unsigned char* pDest, mz_ulong* pDest_len, const unsigned char* pSource, mz_ulong* pSource_len)
+      |                ^~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:560:16: warning: 'uncompress' defined but not used [-Wunused-function]
+  560 |     static int uncompress(unsigned char* pDest, mz_ulong* pDest_len, const unsigned char* pSource, mz_ulong source_len)
+      |                ^~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:555:16: warning: 'inflateEnd' defined but not used [-Wunused-function]
+  555 |     static int inflateEnd(mz_streamp pStream)
+      |                ^~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:550:16: warning: 'inflate' defined but not used [-Wunused-function]
+  550 |     static int inflate(mz_streamp pStream, int flush)
+      |                ^~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:545:16: warning: 'inflateReset' defined but not used [-Wunused-function]
+  545 |     static int inflateReset(mz_streamp pStream)
+      |                ^~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:540:16: warning: 'inflateInit2' defined but not used [-Wunused-function]
+  540 |     static int inflateInit2(mz_streamp pStream, int window_bits)
+      |                ^~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:535:16: warning: 'inflateInit' defined but not used [-Wunused-function]
+  535 |     static int inflateInit(mz_streamp pStream)
+      |                ^~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:527:21: warning: 'compressBound' defined but not used [-Wunused-function]
+  527 |     static mz_ulong compressBound(mz_ulong source_len)
+      |                     ^~~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:523:16: warning: 'compress2' defined but not used [-Wunused-function]
+  523 |     static int compress2(unsigned char *pDest, mz_ulong *pDest_len, const unsigned char *pSource, mz_ulong source_len, int level)
+      |                ^~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:519:16: warning: 'compress' defined but not used [-Wunused-function]
+  519 |     static int compress(unsigned char *pDest, mz_ulong *pDest_len, const unsigned char *pSource, mz_ulong source_len)
+      |                ^~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:515:21: warning: 'deflateBound' defined but not used [-Wunused-function]
+  515 |     static mz_ulong deflateBound(mz_streamp pStream, mz_ulong source_len)
+      |                     ^~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:511:16: warning: 'deflateEnd' defined but not used [-Wunused-function]
+  511 |     static int deflateEnd(mz_streamp pStream)
+      |                ^~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:507:16: warning: 'deflate' defined but not used [-Wunused-function]
+  507 |     static int deflate(mz_streamp pStream, int flush)
+      |                ^~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:503:16: warning: 'deflateReset' defined but not used [-Wunused-function]
+  503 |     static int deflateReset(mz_streamp pStream)
+      |                ^~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:499:16: warning: 'deflateInit2' defined but not used [-Wunused-function]
+  499 |     static int deflateInit2(mz_streamp pStream, int level, int method, int window_bits, int mem_level, int strategy)
+      |                ^~~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/components/compression/third_party/miniz/miniz.h:495:16: warning: 'deflateInit' defined but not used [-Wunused-function]
+  495 |     static int deflateInit(mz_streamp pStream, int level)
+      |                ^~~~~~~~~~~
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/main/election.c:451:17: warning: 'election_run_legacy' defined but not used [-Wunused-function]
+  451 | static uint32_t election_run_legacy(void) {
+      |                 ^~~~~~~~~~~~~~~~~~~

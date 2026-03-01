@@ -15,9 +15,12 @@
 #include "compression.h"
 #include "uav_client.h"
 #include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 #include <freertos/task.h>
 #include <stdlib.h> // For qsort
 #include <string.h>
+
+#define UAV_ONBOARDING_TIMEOUT_MS 300000  // 5 min - only used when UAV detected (RF or TRIGGER_UAV)
 
 static int compare_priority(const void *a, const void *b) {
   const neighbor_entry_t *na = (const neighbor_entry_t *)a;
@@ -38,6 +41,9 @@ static int compare_priority(const void *a, const void *b) {
   return 0;
 }
 
+#define SLEEP_MIN_MS 100
+#define SLEEP_MAX_MS 60000
+
 uint32_t state_machine_get_sleep_time_ms(void) {
   // Only smart sleep in MEMBER state with a valid schedule
   if (g_current_state == STATE_MEMBER) {
@@ -54,18 +60,18 @@ uint32_t state_machine_get_sleep_time_ms(void) {
       int64_t time_to_slot = my_slot_start - now_us;
 
       if (time_to_slot > 0) {
-        // We are early. Sleep until slot.
-        return (uint32_t)(time_to_slot / 1000);
+        // We are early. Sleep until slot. Cap to avoid overflow/long sleep.
+        uint32_t sleep_ms = (uint32_t)(time_to_slot / 1000);
+        if (sleep_ms > SLEEP_MAX_MS)
+          sleep_ms = SLEEP_MAX_MS;
+        return sleep_ms;
       } else {
         // We are IN the slot or LATE.
-        // If we are strictly in the slot, we shouldn't sleep long.
-        // If we missed it, sleep default.
         int64_t time_in_slot = -time_to_slot;
         int64_t slot_len_us = sched.slot_duration_sec * 1000000LL;
 
         if (time_in_slot < slot_len_us) {
-          // Currently IN slot. Don't sleep! Run loop immediately.
-          return 100;
+          return SLEEP_MIN_MS;  // In slot: run soon
         }
       }
     }
@@ -216,7 +222,20 @@ static void transition_to_state(node_state_t new_state) {
   state_entry_time = esp_timer_get_time() / 1000;
 }
 
+static QueueHandle_t s_onboarding_result_queue = NULL;
+
+static void onboarding_task(void *pv) {
+  esp_err_t ret = uav_client_run_onboarding();
+  if (s_onboarding_result_queue != NULL) {
+    xQueueOverwrite(s_onboarding_result_queue, &ret);
+  }
+  vTaskDelete(NULL);
+}
+
 void state_machine_init(void) {
+  if (s_onboarding_result_queue == NULL) {
+    s_onboarding_result_queue = xQueueCreate(1, sizeof(esp_err_t));
+  }
   // Get MAC address for node ID
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_BT);
@@ -478,29 +497,35 @@ void state_machine_run(void) {
               esp_timer_get_time() + ((int64_t)PHASE_GUARD_MS * 1000LL);
 
           // DYNAMIC SLOT CALCULATION (Phase 24)
-          // Available time for slots = Data Phase Length - Guard Time
           uint32_t available_ms = DATA_PHASE_MS - PHASE_GUARD_MS;
-          // Calculate slot size per node (in ms)
           uint32_t slot_ms = available_ms / count;
-
-          // Safety: Ensure minimum slot time to prevent fragmentation
           if (slot_ms < 2000) {
             slot_ms = 2000;
             ESP_LOGW(TAG, "Slot time clamped to minimum 2s");
           }
-
           uint8_t slot_sec = slot_ms / 1000;
 
+          schedule_msg_t scheds[MAX_NEIGHBORS];
+          uint8_t macs[MAX_NEIGHBORS][6];
           for (size_t i = 0; i < count; i++) {
-            schedule_msg_t sched;
-            sched.epoch_us = epoch_us;
-            sched.slot_index = i;
-            sched.slot_duration_sec = slot_sec; // Dynamic duration
-            sched.magic = ESP_NOW_MAGIC_SCHEDULE;
+            scheds[i].epoch_us = epoch_us;
+            scheds[i].slot_index = (uint8_t)i;
+            scheds[i].slot_duration_sec = slot_sec;
+            scheds[i].magic = ESP_NOW_MAGIC_SCHEDULE;
+            memcpy(macs[i], neighbors[i].mac_addr, 6);
+          }
 
-            // Broadcast to each (using Unicast for reliability)
-            esp_now_manager_send_data(neighbors[i].mac_addr, (uint8_t *)&sched,
-                                      sizeof(sched));
+          esp_err_t burst_ret =
+              esp_now_manager_send_schedule_burst(macs, scheds, count);
+
+          if (burst_ret != ESP_OK) {
+            ESP_LOGW(TAG, "Schedule burst failed, falling back to per-peer send");
+            for (size_t i = 0; i < count; i++) {
+              esp_now_manager_send_data(neighbors[i].mac_addr,
+                                        (uint8_t *)&scheds[i], sizeof(scheds[i]));
+            }
+          }
+          for (size_t i = 0; i < count; i++) {
             ESP_LOGI(TAG, "SCHED: Assigned Slot %d to Node %lu (Score %.2f)",
                      (int)i, neighbors[i].node_id, neighbors[i].score);
           }
@@ -832,9 +857,11 @@ void state_machine_run(void) {
               char history_line[256];
               int packets_sent = 0;
               int64_t cutoff_us = slot_end_us - 500000LL; // 500ms margin
+              const int MAX_QUEUE_LINES_PER_CYCLE = 10;   // Cap per iteration
 
-              // Drain Loop: Read line-by-line using fgets (O(1) per line)
-              while (fgets(history_line, sizeof(history_line), q)) {
+              // Drain Loop: Read line-by-line (capped per cycle to avoid WDT)
+              while (packets_sent < MAX_QUEUE_LINES_PER_CYCLE &&
+                     fgets(history_line, sizeof(history_line), q)) {
                 // Check time budget
                 if (esp_timer_get_time() >= cutoff_us) {
                   ESP_LOGW(TAG,
@@ -977,38 +1004,42 @@ void state_machine_run(void) {
         }
       }
 
-      // Fallback: Lazy single line sync if no schedule
-      static uint64_t last_history_sync = 0;
-      if (!in_slot && current_ch != 0 &&
-          (esp_timer_get_time() / 1000 - last_history_sync) >= 5000) {
-        // ... existing fallback code ...
-      }
-      last_history_sync = esp_timer_get_time() / 1000;
     }
     break;
 
   case STATE_UAV_ONBOARDING:
-    // UAV Interaction Phase
+    // UAV Interaction Phase (run in separate task with timeout so state machine does not block forever)
     {
-      ESP_LOGI(TAG, "Starting UAV Onboarding Sequence...");
+      ESP_LOGI(TAG, "Starting UAV Onboarding Sequence (timeout %d s)...",
+               (int)(UAV_ONBOARDING_TIMEOUT_MS / 1000));
 
-      // Stop BLE temporarily to avoid interference
       ble_manager_stop_scanning();
 
-      // Execute onboarding (Blocking for now)
-      esp_err_t ret = uav_client_run_onboarding();
-
-      if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "UAV Onboarding SUCCESS");
+      if (s_onboarding_result_queue != NULL) {
+        xQueueReset(s_onboarding_result_queue);
+        if (xTaskCreate(onboarding_task, "uav_onboard", 8192, NULL,
+                        tskIDLE_PRIORITY + 2, NULL) == pdPASS) {
+          esp_err_t ret = ESP_ERR_TIMEOUT;
+          if (xQueueReceive(s_onboarding_result_queue, &ret,
+                            pdMS_TO_TICKS(UAV_ONBOARDING_TIMEOUT_MS)) == pdTRUE) {
+            if (ret == ESP_OK) {
+              ESP_LOGI(TAG, "UAV Onboarding SUCCESS");
+            } else {
+              ESP_LOGE(TAG, "UAV Onboarding FAILED: %s", esp_err_to_name(ret));
+            }
+          } else {
+            ESP_LOGE(TAG, "UAV Onboarding TIMEOUT after %d s",
+                     (int)(UAV_ONBOARDING_TIMEOUT_MS / 1000));
+          }
+        } else {
+          ESP_LOGE(TAG, "UAV Onboarding task create failed");
+        }
       } else {
-        ESP_LOGE(TAG, "UAV Onboarding FAILED: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "UAV Onboarding queue not available");
       }
 
-      // Return to CH state
       ESP_LOGI(TAG, "Returning to CH state");
       transition_to_state(STATE_CH);
-
-      // Re-enable BLE advertising
       ble_manager_start_advertising();
     }
     break;

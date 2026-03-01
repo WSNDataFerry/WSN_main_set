@@ -13,7 +13,7 @@
 static const char *TAG = "LED_MANAGER";
 
 static TaskHandle_t led_task_handle = NULL;
-static led_strip_handle_t led_strip;
+static led_strip_handle_t led_strip = NULL;  // NULL if init failed (e.g. no RMT)
 static volatile node_state_t current_led_state = STATE_INIT;
 static volatile node_state_t pending_led_state = STATE_INIT;
 static uint64_t pending_since_us = 0;
@@ -37,10 +37,13 @@ static void led_task(void *pvParameters) {
         ESP_LOGI(TAG, "LED applied state: %d", (int)current_led_state);
       }
     }
+    if (!led_strip) {
+      vTaskDelay(pdMS_TO_TICKS(500));
+      continue;
+    }
     switch (current_led_state) {
     case STATE_CH:
       // CH = SOLID BLUE
-      // Standard RGB Mapping verified.
       led_strip_set_pixel(led_strip, 0, 0, 0, 50); // Blue
       led_strip_refresh(led_strip);
       vTaskDelay(pdMS_TO_TICKS(1000));
@@ -48,7 +51,6 @@ static void led_task(void *pvParameters) {
 
     case STATE_MEMBER:
       // MEMBER = BLINKING GREEN
-      // Standard RGB Mapping verified.
       led_strip_set_pixel(led_strip, 0, 0, 50, 0); // Green
       led_strip_refresh(led_strip);
       vTaskDelay(pdMS_TO_TICKS(200));
@@ -61,7 +63,7 @@ static void led_task(void *pvParameters) {
     case STATE_INIT:
     case STATE_DISCOVER:
     case STATE_CANDIDATE:
-      // Fast Blink WHITE (All channels equal, order irrelevant)
+      // Fast Blink WHITE
       led_strip_set_pixel(led_strip, 0, 20, 20, 20);
       led_strip_refresh(led_strip);
       vTaskDelay(pdMS_TO_TICKS(100));
@@ -73,7 +75,6 @@ static void led_task(void *pvParameters) {
 
     case STATE_SLEEP:
     default:
-      // OFF
       led_strip_clear(led_strip);
       led_strip_refresh(led_strip);
       vTaskDelay(pdMS_TO_TICKS(1000));
@@ -86,7 +87,6 @@ void led_manager_init(void) {
   ESP_LOGI(TAG, "Initializing LED Manager on GPIO %d (High Contrast Mode)",
            LED_GPIO);
 
-  // RGB LED configuration
   led_strip_config_t strip_config = {
       .strip_gpio_num = LED_GPIO,
       .max_leds = 1,
@@ -101,11 +101,15 @@ void led_manager_init(void) {
       .flags.with_dma = false,
   };
 
-  ESP_ERROR_CHECK(
-      led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip));
-  led_strip_clear(led_strip);
+  esp_err_t err = led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip);
+  if (err != ESP_OK) {
+    ESP_LOGW(TAG, "LED strip init failed: %s (only power LED will show)",
+             esp_err_to_name(err));
+    led_strip = NULL;
+  } else {
+    led_strip_clear(led_strip);
+  }
 
-  // Create task for LED control
   xTaskCreate(led_task, "led_task", 4096, NULL, 1, &led_task_handle);
 }
 

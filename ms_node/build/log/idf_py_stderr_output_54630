@@ -1,0 +1,3 @@
+/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/main/election.c:451:17: warning: 'election_run_legacy' defined but not used [-Wunused-function]
+  451 | static uint32_t election_run_legacy(void) {
+      |                 ^~~~~~~~~~~~~~~~~~~

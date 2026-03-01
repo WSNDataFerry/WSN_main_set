@@ -4,13 +4,15 @@
 #include "esp_timer.h"
 #include "metrics.h"
 #include "neighbor_manager.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include <math.h>
 #include <string.h>
 
 static const char *TAG = "ELECTION";
 
 static uint64_t election_window_start = 0;
-static bool election_in_progress = false;
+static SemaphoreHandle_t s_election_mutex = NULL;
 
 // ============================================
 // STELLAR Algorithm Data Structures
@@ -513,12 +515,11 @@ static uint32_t election_run_legacy(void) {
 // ============================================
 
 uint32_t election_run(void) {
-  if (election_in_progress) {
-    ESP_LOGW(TAG, "Election already in progress");
+  if (s_election_mutex &&
+      xSemaphoreTake(s_election_mutex, pdMS_TO_TICKS(500)) != pdTRUE) {
+    ESP_LOGW(TAG, "Election mutex timeout (another run in progress?)");
     return 0;
   }
-
-  election_in_progress = true;
 
   uint32_t winner;
 
@@ -528,7 +529,8 @@ uint32_t election_run(void) {
   winner = election_run_legacy();
 #endif
 
-  election_in_progress = false;
+  if (s_election_mutex)
+    xSemaphoreGive(s_election_mutex);
   return winner;
 }
 
@@ -690,7 +692,10 @@ void election_reset_window(void) {
 
 void election_init(void) {
   election_window_start = 0;
-  election_in_progress = false;
+  s_election_mutex = xSemaphoreCreateMutex();
+  if (s_election_mutex == NULL) {
+    ESP_LOGE(TAG, "Failed to create election mutex");
+  }
   ESP_LOGI(TAG, "Election system initialized (STELLAR=%d)",
            USE_STELLAR_ALGORITHM);
 }

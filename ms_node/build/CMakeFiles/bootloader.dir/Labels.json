@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/build/CMakeFiles/bootloader"
+		},
+		{
+			"file" : "/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/build/CMakeFiles/bootloader.rule"
+		},
+		{
+			"file" : "/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/build/CMakeFiles/bootloader-complete.rule"
+		},
+		{
+			"file" : "/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule"
+		},
+		{
+			"file" : "/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule"
+		},
+		{
+			"file" : "/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule"
+		},
+		{
+			"file" : "/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule"
+		},
+		{
+			"file" : "/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule"
+		},
+		{
+			"file" : "/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule"
+		},
+		{
+			"file" : "/Users/vilochanabandara/Downloads/WSN/WSN_main_set/ms_node/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"bootloader"
+		],
+		"name" : "bootloader"
+	}
+}

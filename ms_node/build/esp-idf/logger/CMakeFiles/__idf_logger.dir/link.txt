@@ -1,0 +1,2 @@
+/Users/vilochanabandara/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20250707/xtensa-esp-elf/bin/xtensa-esp32s3-elf-ar qc liblogger.a CMakeFiles/__idf_logger.dir/logger.c.obj CMakeFiles/__idf_logger.dir/blockbuf.c.obj
+/Users/vilochanabandara/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20250707/xtensa-esp-elf/bin/xtensa-esp32s3-elf-ranlib liblogger.a

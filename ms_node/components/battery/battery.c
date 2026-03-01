@@ -37,13 +37,23 @@ esp_err_t battery_init(const battery_cfg_t *cfg)
         .unit_id = s_cfg.unit,
         .ulp_mode = ADC_ULP_MODE_DISABLE,
     };
-    ESP_ERROR_CHECK(adc_oneshot_new_unit(&unit_cfg, &s_adc));
+    esp_err_t err = adc_oneshot_new_unit(&unit_cfg, &s_adc);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Battery ADC unit init failed: %s", esp_err_to_name(err));
+        return err;
+    }
 
     adc_oneshot_chan_cfg_t chan_cfg = {
         .atten = s_cfg.atten,
         .bitwidth = ADC_BITWIDTH_DEFAULT,
     };
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc, s_cfg.channel, &chan_cfg));
+    err = adc_oneshot_config_channel(s_adc, s_cfg.channel, &chan_cfg);
+    if (err != ESP_OK) {
+        adc_oneshot_del_unit(s_adc);
+        s_adc = NULL;
+        ESP_LOGW(TAG, "Battery ADC channel config failed: %s", esp_err_to_name(err));
+        return err;
+    }
 
     // Try calibration (best accuracy)
 #if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED

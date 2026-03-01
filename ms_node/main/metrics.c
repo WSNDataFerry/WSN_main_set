@@ -460,10 +460,10 @@ node_metrics_t metrics_get_current(void) {
 }
 
 void metrics_init(void) {
-  // Create recursive mutex for thread safety
   metrics_mutex = xSemaphoreCreateRecursiveMutex();
   if (metrics_mutex == NULL) {
-    ESP_LOGE(TAG, "Failed to create metrics mutex!");
+    ESP_LOGE(TAG, "Failed to create metrics mutex - metrics updates disabled");
+    return;  // Do not initialize; metrics_update will no-op
   }
 
   // ADC initialization is handled by ms_node.c (battery_init)

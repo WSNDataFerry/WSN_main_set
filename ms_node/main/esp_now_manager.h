@@ -55,4 +55,16 @@ esp_err_t esp_now_manager_send_data(const uint8_t *peer_addr,
  */
 schedule_msg_t esp_now_get_current_schedule(void);
 
+/**
+ * @brief Send TDMA schedules to multiple peers in a single BLE quiet window.
+ *        Each peer gets schedules[i] (typically differing slot_index).
+ * @param peer_macs Array of 6-byte MAC addresses
+ * @param schedules Array of schedule messages (one per peer)
+ * @param count Number of peers
+ * @return ESP_OK if all sent, ESP_FAIL on first failure
+ */
+esp_err_t esp_now_manager_send_schedule_burst(const uint8_t (*peer_macs)[6],
+                                               const schedule_msg_t *schedules,
+                                               size_t count);
+
 #endif // ESP_NOW_MANAGER_H

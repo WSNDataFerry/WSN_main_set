@@ -125,6 +125,25 @@ static void log_wakeup_reason(void) {
 
 // Compression bench task removed
 
+// Valid config ranges (reject invalid to prevent div-by-zero and overflow)
+#define CONFIG_INTERVAL_MIN_MS 1000
+#define CONFIG_INTERVAL_MAX_MS 86400000
+#define CONFIG_AUDIO_SAMPLE_RATE_MIN 8000
+#define CONFIG_AUDIO_SAMPLE_RATE_MAX 48000
+#define CONFIG_AUDIO_DURATION_MIN_MS 100
+#define CONFIG_AUDIO_DURATION_MAX_MS 10000
+#define CONFIG_BEACON_INTERVAL_MIN_MS 100
+#define CONFIG_BEACON_INTERVAL_MAX_MS 60000
+
+static bool config_validate_interval(uint32_t val, const char *key) {
+  if (val < CONFIG_INTERVAL_MIN_MS || val > CONFIG_INTERVAL_MAX_MS) {
+    ESP_LOGW(TAG, "Config %s=%lu out of range [%u,%u], rejected", key,
+             (unsigned long)val, CONFIG_INTERVAL_MIN_MS, CONFIG_INTERVAL_MAX_MS);
+    return false;
+  }
+  return true;
+}
+
 // Apply one key=value to sensor config (serial console, same keys as BLE).
 static esp_err_t apply_config_key_value(const char *key_value) {
   char buf[128];
@@ -140,16 +159,35 @@ static esp_err_t apply_config_key_value(const char *key_value) {
   const char *value = eq + 1;
   sensor_config_t cfg;
   sensor_config_get(&cfg);
+
+  int ival = atoi(value);
+  if (ival < 0 && (strstr(key, "interval") || strstr(key, "rate") ||
+                   strstr(key, "duration") || strstr(key, "beacon"))) {
+    ESP_LOGW(TAG, "Config %s: negative value rejected", key);
+    return ESP_ERR_INVALID_ARG;
+  }
+  uint32_t uval = (uint32_t)(ival < 0 ? 0 : ival);
+
   if (strcmp(key, "audio_interval_ms") == 0) {
-    cfg.audio_interval_ms = (uint32_t)atoi(value);
+    if (!config_validate_interval(uval, key))
+      return ESP_ERR_INVALID_ARG;
+    cfg.audio_interval_ms = uval;
   } else if (strcmp(key, "env_sensor_interval_ms") == 0) {
-    cfg.env_sensor_interval_ms = (uint32_t)atoi(value);
+    if (!config_validate_interval(uval, key))
+      return ESP_ERR_INVALID_ARG;
+    cfg.env_sensor_interval_ms = uval;
   } else if (strcmp(key, "gas_sensor_interval_ms") == 0) {
-    cfg.gas_sensor_interval_ms = (uint32_t)atoi(value);
+    if (!config_validate_interval(uval, key))
+      return ESP_ERR_INVALID_ARG;
+    cfg.gas_sensor_interval_ms = uval;
   } else if (strcmp(key, "mag_sensor_interval_ms") == 0) {
-    cfg.mag_sensor_interval_ms = (uint32_t)atoi(value);
+    if (!config_validate_interval(uval, key))
+      return ESP_ERR_INVALID_ARG;
+    cfg.mag_sensor_interval_ms = uval;
   } else if (strcmp(key, "power_sensor_interval_ms") == 0) {
-    cfg.power_sensor_interval_ms = (uint32_t)atoi(value);
+    if (!config_validate_interval(uval, key))
+      return ESP_ERR_INVALID_ARG;
+    cfg.power_sensor_interval_ms = uval;
   } else if (strcmp(key, "inmp441_enabled") == 0) {
     cfg.inmp441_enabled = (atoi(value) != 0);
   } else if (strcmp(key, "bme280_enabled") == 0) {
@@ -159,13 +197,36 @@ static esp_err_t apply_config_key_value(const char *key_value) {
   } else if (strcmp(key, "gy271_enabled") == 0) {
     cfg.gy271_enabled = (atoi(value) != 0);
   } else if (strcmp(key, "audio_sample_rate") == 0) {
-    cfg.audio_sample_rate = (uint32_t)atoi(value);
+    if (uval < CONFIG_AUDIO_SAMPLE_RATE_MIN || uval > CONFIG_AUDIO_SAMPLE_RATE_MAX) {
+      ESP_LOGW(TAG, "Config %s=%lu out of range [%u,%u], rejected", key,
+               (unsigned long)uval, CONFIG_AUDIO_SAMPLE_RATE_MIN,
+               CONFIG_AUDIO_SAMPLE_RATE_MAX);
+      return ESP_ERR_INVALID_ARG;
+    }
+    cfg.audio_sample_rate = uval;
   } else if (strcmp(key, "audio_duration_ms") == 0) {
-    cfg.audio_duration_ms = (uint32_t)atoi(value);
+    if (uval < CONFIG_AUDIO_DURATION_MIN_MS || uval > CONFIG_AUDIO_DURATION_MAX_MS) {
+      ESP_LOGW(TAG, "Config %s=%lu out of range [%u,%u], rejected", key,
+               (unsigned long)uval, CONFIG_AUDIO_DURATION_MIN_MS,
+               CONFIG_AUDIO_DURATION_MAX_MS);
+      return ESP_ERR_INVALID_ARG;
+    }
+    cfg.audio_duration_ms = uval;
   } else if (strcmp(key, "beacon_interval_ms") == 0) {
-    cfg.beacon_interval_ms = (uint32_t)atoi(value);
+    if (uval < CONFIG_BEACON_INTERVAL_MIN_MS || uval > CONFIG_BEACON_INTERVAL_MAX_MS) {
+      ESP_LOGW(TAG, "Config %s=%lu out of range [%u,%u], rejected", key,
+               (unsigned long)uval, CONFIG_BEACON_INTERVAL_MIN_MS,
+               CONFIG_BEACON_INTERVAL_MAX_MS);
+      return ESP_ERR_INVALID_ARG;
+    }
+    cfg.beacon_interval_ms = uval;
   } else if (strcmp(key, "beacon_offset_ms") == 0) {
-    cfg.beacon_offset_ms = (uint32_t)atoi(value);
+    if (uval > CONFIG_BEACON_INTERVAL_MAX_MS) {
+      ESP_LOGW(TAG, "Config %s=%lu out of range [0,%u], rejected", key,
+               (unsigned long)uval, CONFIG_BEACON_INTERVAL_MAX_MS);
+      return ESP_ERR_INVALID_ARG;
+    }
+    cfg.beacon_offset_ms = uval;
   } else {
     ESP_LOGW(TAG, "Unknown config key: %s", key);
     return ESP_ERR_NOT_FOUND;
@@ -176,7 +237,6 @@ static esp_err_t apply_config_key_value(const char *key_value) {
   return ESP_OK;
 }
 
-// Print cluster report for host script (CLUSTER command).
 // Print cluster report for host script (CLUSTER command).
 static void cluster_report_print(void) {
   node_metrics_t m = metrics_get_current();
@@ -337,6 +397,7 @@ void app_main(void) {
   neighbor_manager_init();
   election_init();
   persistence_init(); // Initialize persistence before other systems
+  persistence_load_reputations(); // Load reputation cache for new neighbors
 
   ble_manager_init();
   led_manager_init();
@@ -353,8 +414,10 @@ void app_main(void) {
   // Initialize ESP-NOW
   esp_now_manager_init();
 
-  // Initialize RF Receiver
-  rf_receiver_init();
+  // Initialize RF Receiver (non-fatal: may fail if no free RMT channel, e.g. LED strip)
+  if (rf_receiver_init() != ESP_OK) {
+    ESP_LOGW(TAG, "RF Receiver unavailable - UAV trigger disabled");
+  }
 
   // Initialize State Machine (MUST be after all subsystems)
   state_machine_init();
@@ -398,7 +461,9 @@ void app_main(void) {
       .r2_ohm = 100000,
       .samples = 32,
   };
-  ESP_ERROR_CHECK(battery_init(&bcfg));
+  if (battery_init(&bcfg) != ESP_OK) {
+    ESP_LOGW(TAG, "Battery init failed - using USB/fallback level in metrics");
+  }
 
   pme_config_t cfg = {
       .th = {.normal_min_pct = 60, .power_save_min_pct = 10},
@@ -406,7 +471,9 @@ void app_main(void) {
       .fake_drop_per_tick = 0,
       .fake_tick_ms = 1000,
   };
-  ESP_ERROR_CHECK(pme_init(&cfg));
+  if (pme_init(&cfg) != ESP_OK) {
+    ESP_LOGW(TAG, "PME init failed - continuing with defaults");
+  }
 
   // ========== STELLAR CLUSTER TASKS (after battery/PME so metrics_task gets
   // valid battery) ==========
@@ -607,42 +674,61 @@ void app_main(void) {
     // every 100ms) This allows the main loop to focus on sensor sampling
     // without blocking STELLAR operations
 
-    // ---- Per-sensor interval timing (mode-dependent) ----
+    // ---- Per-sensor interval timing (config + mode fallback) ----
     uint64_t now_ms = esp_timer_get_time() / 1000ULL;
 
-    // Calculate intervals based on PME mode
-    uint32_t env_interval_ms, gas_interval_ms, mag_interval_ms,
-        power_interval_ms, audio_interval_ms;
-
+    // Mode defaults; config overrides when in valid range [1s, 24h]
+    uint32_t env_default, gas_default, mag_default, power_default, audio_default;
     switch (mode) {
     case PME_MODE_NORMAL:
-      // Slower sampling in Normal mode (targeting week-long retention)
-      env_interval_ms = 60000;    // 60 seconds
-      gas_interval_ms = 180000;   // 180 seconds (3 minutes, 3x env)
-      mag_interval_ms = 60000;    // 60 seconds
-      power_interval_ms = 60000;  // 60 seconds
-      audio_interval_ms = 600000; // 600 seconds (10 minutes)
+      env_default = 60000;
+      gas_default = 180000;
+      mag_default = 60000;
+      power_default = 60000;
+      audio_default = 600000;
       break;
-
     case PME_MODE_POWER_SAVE:
-      // Further slowed sampling in PowerSave mode
-      env_interval_ms = 300000;   // 300 seconds (5 minutes)
-      gas_interval_ms = 600000;   // 600 seconds (10 minutes, 2x env)
-      mag_interval_ms = 300000;   // 300 seconds
-      power_interval_ms = 120000; // 120 seconds (still track battery)
-      audio_interval_ms = 900000; // 900 seconds (15 minutes)
+      env_default = 300000;
+      gas_default = 600000;
+      mag_default = 300000;
+      power_default = 120000;
+      audio_default = 900000;
       break;
-
     case PME_MODE_CRITICAL:
     default:
-      // Minimal sampling in Critical mode
-      env_interval_ms = 7200000; // 7200 seconds (2 hours)
-      gas_interval_ms = 7200000; // 2 hours
-      mag_interval_ms = 7200000; // 2 hours
-      power_interval_ms = 60000; // 60 seconds (1 minute, still monitor battery)
-      audio_interval_ms = 7200000; // 2 hours
+      env_default = 7200000;
+      gas_default = 7200000;
+      mag_default = 7200000;
+      power_default = 60000;
+      audio_default = 7200000;
       break;
     }
+
+    uint32_t env_interval_ms =
+        (s_sensor_config.env_sensor_interval_ms >= CONFIG_INTERVAL_MIN_MS &&
+         s_sensor_config.env_sensor_interval_ms <= CONFIG_INTERVAL_MAX_MS)
+            ? s_sensor_config.env_sensor_interval_ms
+            : env_default;
+    uint32_t gas_interval_ms =
+        (s_sensor_config.gas_sensor_interval_ms >= CONFIG_INTERVAL_MIN_MS &&
+         s_sensor_config.gas_sensor_interval_ms <= CONFIG_INTERVAL_MAX_MS)
+            ? s_sensor_config.gas_sensor_interval_ms
+            : gas_default;
+    uint32_t mag_interval_ms =
+        (s_sensor_config.mag_sensor_interval_ms >= CONFIG_INTERVAL_MIN_MS &&
+         s_sensor_config.mag_sensor_interval_ms <= CONFIG_INTERVAL_MAX_MS)
+            ? s_sensor_config.mag_sensor_interval_ms
+            : mag_default;
+    uint32_t power_interval_ms =
+        (s_sensor_config.power_sensor_interval_ms >= CONFIG_INTERVAL_MIN_MS &&
+         s_sensor_config.power_sensor_interval_ms <= CONFIG_INTERVAL_MAX_MS)
+            ? s_sensor_config.power_sensor_interval_ms
+            : power_default;
+    uint32_t audio_interval_ms =
+        (s_sensor_config.audio_interval_ms >= CONFIG_INTERVAL_MIN_MS &&
+         s_sensor_config.audio_interval_ms <= CONFIG_INTERVAL_MAX_MS)
+            ? s_sensor_config.audio_interval_ms
+            : audio_default;
 
     bool time_for_env = (now_ms - s_last_env_read_ms) >= env_interval_ms;
     bool time_for_gas = (now_ms - s_last_gas_read_ms) >= gas_interval_ms;
@@ -985,8 +1071,24 @@ void app_main(void) {
       esp_deep_sleep_start();
     }
 
+    // Periodic reputation persistence (every ~5 min if sleep ~1s)
+    static uint32_t s_loop_count = 0;
+    if (++s_loop_count >= 300) {
+      s_loop_count = 0;
+      neighbor_entry_t rep_neighbors[MAX_NEIGHBORS];
+      size_t rep_n = neighbor_manager_get_all(rep_neighbors, MAX_NEIGHBORS);
+      if (rep_n > 0) {
+        uint32_t rep_ids[MAX_NEIGHBORS];
+        float rep_trusts[MAX_NEIGHBORS];
+        for (size_t i = 0; i < rep_n; i++) {
+          rep_ids[i] = rep_neighbors[i].node_id;
+          rep_trusts[i] = rep_neighbors[i].trust;
+        }
+        persistence_save_reputations(rep_ids, rep_trusts, rep_n);
+      }
+    }
+
     // Smart Sleep / Time Slicing Wait
-    // Instead of fixed period, we ask the state machine how long to sleep
     uint32_t sleep_ms = state_machine_get_sleep_time_ms();
 
     // If we are in critical mode, force deep sleep handled above.

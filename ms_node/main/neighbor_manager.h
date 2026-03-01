@@ -74,12 +74,14 @@ uint32_t neighbor_manager_get_current_ch(void);
  * @param node_id Node ID
  * @param success Whether interaction was successful
  */
-/**
- * @brief Update neighbor trust based on interaction
- * @param node_id Node ID
- * @param success Whether interaction was successful
- */
 void neighbor_manager_update_trust(uint32_t node_id, bool success);
+
+/**
+ * @brief Set trust value for a neighbor (e.g. when loading persisted reputation)
+ * @param node_id Node ID
+ * @param trust Trust value 0.0f..1.0f
+ */
+void neighbor_manager_set_trust_value(uint32_t node_id, float trust);
 
 /**
  * @brief Get total number of active neighbors

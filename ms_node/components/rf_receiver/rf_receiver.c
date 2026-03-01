@@ -9,7 +9,8 @@ static const char *TAG = "RF_RX";
 
 static rmt_channel_handle_t rx_chan = NULL;
 static QueueHandle_t rx_queue = NULL;
-static rmt_symbol_word_t raw_symbols[64]; // Buffer for received symbols
+#define RMT_SYMBOL_BUF_SIZE 256  // Increased from 64 to reduce "buffer too small" log spam
+static rmt_symbol_word_t raw_symbols[RMT_SYMBOL_BUF_SIZE];
 
 // RMT Configuration
 #define RMT_RESOLUTION_HZ 1000000 // 1MHz, 1us per tick
@@ -153,27 +154,49 @@ esp_err_t rf_receiver_init(void) {
   rmt_rx_channel_config_t rx_chan_config = {
       .clk_src = RMT_CLK_SRC_DEFAULT,
       .resolution_hz = RMT_RESOLUTION_HZ,
-      .mem_block_symbols = 64,
+      .mem_block_symbols = RMT_SYMBOL_BUF_SIZE,
       .gpio_num = RF_RECEIVER_GPIO,
   };
 
-  ESP_ERROR_CHECK(rmt_new_rx_channel(&rx_chan_config, &rx_chan));
+  esp_err_t err = rmt_new_rx_channel(&rx_chan_config, &rx_chan);
+  if (err != ESP_OK) {
+    ESP_LOGW(TAG, "RF Receiver init failed (no free RMT channel): %s - "
+                  "UAV trigger disabled, cluster will run normally",
+             esp_err_to_name(err));
+    return err;
+  }
 
   rmt_rx_event_callbacks_t cbs = {
       .on_recv_done = rmt_callback,
   };
-  ESP_ERROR_CHECK(rmt_rx_register_event_callbacks(rx_chan, &cbs, NULL));
-  ESP_ERROR_CHECK(rmt_enable(rx_chan));
+  err = rmt_rx_register_event_callbacks(rx_chan, &cbs, NULL);
+  if (err != ESP_OK) {
+    rmt_del_channel(rx_chan);
+    rx_chan = NULL;
+    return err;
+  }
+  err = rmt_enable(rx_chan);
+  if (err != ESP_OK) {
+    rmt_del_channel(rx_chan);
+    rx_chan = NULL;
+    return err;
+  }
 
   rx_queue = xQueueCreate(1, sizeof(rmt_rx_done_event_data_t));
 
-  // Enable reception
   rmt_receive_config_t receive_config = {
       .signal_range_min_ns = 1000,
       .signal_range_max_ns = 12000000, // 12ms max
   };
-  ESP_ERROR_CHECK(
-      rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &receive_config));
+  err = rmt_receive(rx_chan, raw_symbols, sizeof(raw_symbols), &receive_config);
+  if (err != ESP_OK) {
+    rmt_disable(rx_chan);
+    rmt_del_channel(rx_chan);
+    rx_chan = NULL;
+    vQueueDelete(rx_queue);
+    rx_queue = NULL;
+    return err;
+  }
 
   return ESP_OK;
 }

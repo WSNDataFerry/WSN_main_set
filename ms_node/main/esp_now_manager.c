@@ -18,6 +18,11 @@
 
 static const char *TAG = "ESP_NOW";
 static schedule_msg_t g_current_schedule = {0};
+static SemaphoreHandle_t s_schedule_mutex = NULL;
+
+// Static buffer for JSON recv (avoids malloc in Wi-Fi callback context)
+#define ESP_NOW_MAX_PAYLOAD 250
+static char s_json_recv_buf[ESP_NOW_MAX_PAYLOAD + 1];
 
 // Send-complete semaphore: prevents calling esp_now_send() while a previous
 // frame is still in-flight. Without this, the burst-send loop + BLE callbacks
@@ -45,7 +50,12 @@ static void process_packet(const esp_now_recv_info_t *info, const uint8_t *data,
           (int64_t)sched->slot_index * sched->slot_duration_sec * 1000000LL;
       local_sched.epoch_us = now_us - time_into_cycle;
 
-      g_current_schedule = local_sched;
+      if (s_schedule_mutex && xSemaphoreTake(s_schedule_mutex, pdMS_TO_TICKS(20)) == pdTRUE) {
+        g_current_schedule = local_sched;
+        xSemaphoreGive(s_schedule_mutex);
+      } else {
+        g_current_schedule = local_sched;  // Fallback if mutex not ready
+      }
 
       // PHASE SYNC FIX: Synchronize the local superframe phase timer to the
       // CH's superframe. The CH sets epoch_us = data_phase_start + GUARD.
@@ -97,21 +107,18 @@ static void process_packet(const esp_now_recv_info_t *info, const uint8_t *data,
     return;
   }
 
-  // 3. Check for Historical Data (JSON String)
+  // 3. Check for Historical Data (JSON String) - use static buffer, no malloc
   if (len > 0 && data[0] == '{') {
-    char *json_data = malloc(len + 1);
-    if (json_data) {
-      memcpy(json_data, data, len);
-      json_data[len] = '\0';
-      ESP_LOGI(TAG, "RX Historical Data: %s", json_data);
-      storage_manager_write_compressed(json_data, true);
-      storage_manager_display_status();
-      free(json_data);
+    size_t copy_len = (len <= ESP_NOW_MAX_PAYLOAD) ? len : ESP_NOW_MAX_PAYLOAD;
+    memcpy(s_json_recv_buf, data, copy_len);
+    s_json_recv_buf[copy_len] = '\0';
+    ESP_LOGI(TAG, "RX Historical Data: %s", s_json_recv_buf);
+    storage_manager_write_compressed(s_json_recv_buf, true);
+    storage_manager_display_status();
 
-      neighbor_entry_t n;
-      if (neighbor_manager_get_by_mac(info->src_addr, &n)) {
-        neighbor_manager_update_trust(n.node_id, true);
-      }
+    neighbor_entry_t n;
+    if (neighbor_manager_get_by_mac(info->src_addr, &n)) {
+      neighbor_manager_update_trust(n.node_id, true);
     }
     return;
   }
@@ -211,6 +218,11 @@ esp_err_t esp_now_manager_init(void) {
     return ESP_ERR_NO_MEM;
   }
 
+  s_schedule_mutex = xSemaphoreCreateMutex();
+  if (s_schedule_mutex == NULL) {
+    ESP_LOGW(TAG, "Failed to create schedule mutex");
+  }
+
   ESP_LOGI(TAG, "ESP-NOW initialized on channel %d", ESP_NOW_CHANNEL);
   return ESP_OK;
 }
@@ -234,7 +246,69 @@ esp_err_t esp_now_manager_register_peer(const uint8_t *peer_addr,
   return esp_now_add_peer(&peer);
 }
 
-schedule_msg_t esp_now_get_current_schedule(void) { return g_current_schedule; }
+schedule_msg_t esp_now_get_current_schedule(void) {
+  schedule_msg_t sched = {0};
+  if (s_schedule_mutex && xSemaphoreTake(s_schedule_mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+    sched = g_current_schedule;
+    xSemaphoreGive(s_schedule_mutex);
+  } else {
+    sched = g_current_schedule;
+  }
+  return sched;
+}
+
+esp_err_t esp_now_manager_send_schedule_burst(const uint8_t (*peer_macs)[6],
+                                               const schedule_msg_t *schedules,
+                                               size_t count) {
+  if (!peer_macs || count == 0 || !schedules)
+    return ESP_ERR_INVALID_ARG;
+
+  bool was_scanning = ble_manager_is_scanning();
+  bool was_advertising = ble_manager_is_advertising();
+  if (was_scanning)
+    ble_manager_stop_scanning();
+  if (was_advertising)
+    ble_manager_stop_advertising();
+  esp_wifi_set_channel(ESP_NOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
+  vTaskDelay(pdMS_TO_TICKS(120));
+
+  esp_err_t result = ESP_OK;
+  for (size_t i = 0; i < count; i++) {
+    if (!esp_now_is_peer_exist(peer_macs[i])) {
+      esp_now_manager_register_peer(peer_macs[i], false);
+    }
+    if (s_send_sem && xSemaphoreTake(s_send_sem, pdMS_TO_TICKS(400)) != pdTRUE) {
+      ESP_LOGW(TAG, "Schedule burst: sem timeout at peer %zu", i);
+      result = ESP_FAIL;
+      break;
+    }
+    s_last_send_status = -1;
+    if (s_send_done)
+      xSemaphoreTake(s_send_done, 0);
+    esp_err_t ret = esp_now_send(peer_macs[i], (const uint8_t *)&schedules[i],
+                                 sizeof(schedule_msg_t));
+    if (ret != ESP_OK) {
+      if (s_send_sem)
+        xSemaphoreGive(s_send_sem);
+      result = ESP_FAIL;
+      break;
+    }
+    if (s_send_done && xSemaphoreTake(s_send_done, pdMS_TO_TICKS(1000)) != pdTRUE) {
+      result = ESP_FAIL;
+      break;
+    }
+    if (s_last_send_status != ESP_NOW_SEND_SUCCESS) {
+      result = ESP_FAIL;
+      break;
+    }
+  }
+
+  if (was_scanning)
+    ble_manager_start_scanning();
+  if (was_advertising)
+    ble_manager_start_advertising();
+  return result;
+}
 
 esp_err_t esp_now_manager_send_data(const uint8_t *peer_addr,
                                     const uint8_t *data, size_t len) {

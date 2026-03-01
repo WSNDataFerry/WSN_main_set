@@ -2,6 +2,7 @@
 #include "config.h"
 #include "esp_log.h"
 #include "esp_now_manager.h"
+#include "persistence.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -118,7 +119,6 @@ void neighbor_manager_update(uint32_t node_id, const uint8_t *mac_addr,
     entry->node_id = node_id;
     if (mac_addr) {
       memcpy(entry->mac_addr, mac_addr, 6);
-      // Register as ESP-NOW peer
       esp_now_manager_register_peer(mac_addr, false);
     }
     entry->rssi_ewma = (float)rssi;
@@ -126,7 +126,12 @@ void neighbor_manager_update(uint32_t node_id, const uint8_t *mac_addr,
     entry->score = score;
     entry->battery = battery;
     entry->uptime_seconds = uptime;
-    entry->trust = trust;
+    float use_trust = trust;
+    if (persistence_get_initial_trust(node_id, &use_trust)) {
+      entry->trust = use_trust;
+    } else {
+      entry->trust = trust;
+    }
     entry->link_quality = link_quality;
     entry->last_seen_ms = now_ms;
     entry->is_ch = is_ch;
@@ -345,6 +350,23 @@ void neighbor_manager_update_trust(uint32_t node_id, bool success) {
     }
     xSemaphoreGive(neighbor_mutex);
   }
+}
+
+void neighbor_manager_set_trust_value(uint32_t node_id, float trust) {
+  if (neighbor_mutex == NULL)
+    return;
+  if (xSemaphoreTake(neighbor_mutex, pdMS_TO_TICKS(50)) != pdTRUE)
+    return;
+  for (size_t i = 0; i < neighbor_count; i++) {
+    if (neighbor_table[i].node_id == node_id) {
+      neighbor_table[i].trust = (trust < 0.0f) ? 0.0f : (trust > 1.0f) ? 1.0f : trust;
+      if (neighbor_table[i].trust > 0.3f) {
+        neighbor_table[i].verified = true;
+      }
+      break;
+    }
+  }
+  xSemaphoreGive(neighbor_mutex);
 }
 
 size_t neighbor_manager_get_count(void) {
