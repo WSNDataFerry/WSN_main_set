@@ -647,10 +647,10 @@ void app_main(void) {
       // Fallback: Mock Mode or USB Power
 
 #if ENABLE_MOCK_BATTERY
-      // Static mock mode (steady, non-degrading 100%)
-      batt_pct = 100;
-      vbat_mv = 4200; // Simulated full battery voltage
-      ESP_LOGW(TAG, "[MOCK] Battery: %u%% (Simulated Full)", batt_pct);
+      // Static mock mode (steady 75% — healthy but not dominant vs real nodes)
+      batt_pct = 75;
+      vbat_mv = 3975; // ~75% on 3.3–4.2V scale
+      ESP_LOGW(TAG, "[MOCK] Battery: %u%% (Simulated)", batt_pct);
       pme_set_batt_pct(batt_pct);
 #else
       // Fallback for USB power (no battery detected but node is running)
