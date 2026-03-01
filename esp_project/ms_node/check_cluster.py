@@ -19,9 +19,9 @@ except ImportError:
     yaml = None
 
 NODES = [
-    {"port": "/dev/tty.usbmodem5ABA0607321", "name": "Node3", "mac": "10:20:ba:4c:5a:98"},
-    {"port": "/dev/tty.usbmodem5ABA0605221", "name": "Node2", "mac": "10:20:ba:4c:5c:b0"},
-    {"port": "/dev/tty.usbmodem5ABA0603751", "name": "Node1", "mac": "10:20:ba:4b:dd:c0"},
+    {"port": "/dev/cu.usbmodem1401", "name": "Node3", "mac": "10:20:ba:4c:5a:98"},
+    {"port": "/dev/cu.usbmodem1301", "name": "Node2", "mac": "10:20:ba:4c:5c:b0"},
+    {"port": "/dev/cu.usbmodem1201", "name": "Node1", "mac": "10:20:ba:4b:dd:c0"},
 ]
 
 MS_NODE_ROOT = Path(__file__).resolve().parent
@@ -37,12 +37,22 @@ def load_nodes():
 
 
 def monitor_node(node, duration=30):
+    import serial
+    log_file = f"/tmp/{node['name']}.log"
+    print(f"[{node['name']}] Starting monitor on {node['port']} -> {log_file}")
+    
     try:
-        cmd = ["screen", "-L", "-Logfile", f"/tmp/{node['name']}.log", node["port"], "115200"]
-        print(f"[{node['name']}] Starting monitor on {node['port']}")
-        subprocess.run(cmd, timeout=duration)
-    except subprocess.TimeoutExpired:
-        print(f"[{node['name']}] Monitor timeout")
+        with serial.Serial(node["port"], 115200, timeout=0.1) as ser, open(log_file, "w") as f:
+            start_time = time.time()
+            while time.time() - start_time < duration:
+                line = ser.readline()
+                if line:
+                    try:
+                        decoded_line = line.decode('utf-8', errors='replace')
+                        f.write(decoded_line)
+                        f.flush()
+                    except Exception:
+                        pass
     except Exception as e:
         print(f"[{node['name']}] Error: {e}")
 
@@ -88,7 +98,7 @@ def main():
         threads.append(t)
         time.sleep(1)
     check_logs(nodes, args.wait)
-    subprocess.run(["killall", "screen"], stderr=subprocess.DEVNULL)
+    check_logs(nodes, args.wait)
     print("\nMonitoring complete. Check /tmp/Node*.log for full logs.")
 
 
