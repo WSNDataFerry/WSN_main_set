@@ -138,7 +138,8 @@ static void log_wakeup_reason(void) {
 static bool config_validate_interval(uint32_t val, const char *key) {
   if (val < CONFIG_INTERVAL_MIN_MS || val > CONFIG_INTERVAL_MAX_MS) {
     ESP_LOGW(TAG, "Config %s=%lu out of range [%u,%u], rejected", key,
-             (unsigned long)val, CONFIG_INTERVAL_MIN_MS, CONFIG_INTERVAL_MAX_MS);
+             (unsigned long)val, CONFIG_INTERVAL_MIN_MS,
+             CONFIG_INTERVAL_MAX_MS);
     return false;
   }
   return true;
@@ -197,7 +198,8 @@ static esp_err_t apply_config_key_value(const char *key_value) {
   } else if (strcmp(key, "gy271_enabled") == 0) {
     cfg.gy271_enabled = (atoi(value) != 0);
   } else if (strcmp(key, "audio_sample_rate") == 0) {
-    if (uval < CONFIG_AUDIO_SAMPLE_RATE_MIN || uval > CONFIG_AUDIO_SAMPLE_RATE_MAX) {
+    if (uval < CONFIG_AUDIO_SAMPLE_RATE_MIN ||
+        uval > CONFIG_AUDIO_SAMPLE_RATE_MAX) {
       ESP_LOGW(TAG, "Config %s=%lu out of range [%u,%u], rejected", key,
                (unsigned long)uval, CONFIG_AUDIO_SAMPLE_RATE_MIN,
                CONFIG_AUDIO_SAMPLE_RATE_MAX);
@@ -205,7 +207,8 @@ static esp_err_t apply_config_key_value(const char *key_value) {
     }
     cfg.audio_sample_rate = uval;
   } else if (strcmp(key, "audio_duration_ms") == 0) {
-    if (uval < CONFIG_AUDIO_DURATION_MIN_MS || uval > CONFIG_AUDIO_DURATION_MAX_MS) {
+    if (uval < CONFIG_AUDIO_DURATION_MIN_MS ||
+        uval > CONFIG_AUDIO_DURATION_MAX_MS) {
       ESP_LOGW(TAG, "Config %s=%lu out of range [%u,%u], rejected", key,
                (unsigned long)uval, CONFIG_AUDIO_DURATION_MIN_MS,
                CONFIG_AUDIO_DURATION_MAX_MS);
@@ -213,7 +216,8 @@ static esp_err_t apply_config_key_value(const char *key_value) {
     }
     cfg.audio_duration_ms = uval;
   } else if (strcmp(key, "beacon_interval_ms") == 0) {
-    if (uval < CONFIG_BEACON_INTERVAL_MIN_MS || uval > CONFIG_BEACON_INTERVAL_MAX_MS) {
+    if (uval < CONFIG_BEACON_INTERVAL_MIN_MS ||
+        uval > CONFIG_BEACON_INTERVAL_MAX_MS) {
       ESP_LOGW(TAG, "Config %s=%lu out of range [%u,%u], rejected", key,
                (unsigned long)uval, CONFIG_BEACON_INTERVAL_MIN_MS,
                CONFIG_BEACON_INTERVAL_MAX_MS);
@@ -396,7 +400,7 @@ void app_main(void) {
   metrics_init();
   neighbor_manager_init();
   election_init();
-  persistence_init(); // Initialize persistence before other systems
+  persistence_init();             // Initialize persistence before other systems
   persistence_load_reputations(); // Load reputation cache for new neighbors
 
   ble_manager_init();
@@ -414,7 +418,8 @@ void app_main(void) {
   // Initialize ESP-NOW
   esp_now_manager_init();
 
-  // Initialize RF Receiver (non-fatal: may fail if no free RMT channel, e.g. LED strip)
+  // Initialize RF Receiver (non-fatal: may fail if no free RMT channel, e.g.
+  // LED strip)
   if (rf_receiver_init() != ESP_OK) {
     ESP_LOGW(TAG, "RF Receiver unavailable - UAV trigger disabled");
   }
@@ -618,15 +623,19 @@ void app_main(void) {
     uint8_t batt_pct = 0;
     bool use_mock_battery = false;
 
-#if ENABLE_MOCK_SENSORS
+#if ENABLE_MOCK_BATTERY
     use_mock_battery = true;
 #endif
 
-    // If not forced mock, try real read. If read fails or voltage is critically
-    // low (floating pin), fallback to dummy/mock.
-    if (!use_mock_battery &&
-        battery_read(&vadc_mv, &vbat_mv, &batt_pct) == ESP_OK &&
-        vbat_mv > 2000) {
+    // DEBUG: Always attempt a hardware read to see raw values
+    battery_read(&vadc_mv, &vbat_mv, &batt_pct);
+    ESP_LOGW(TAG, "RAW HARDWARE ADC: vadc=%lumV vbat_calc=%lumV",
+             (unsigned long)vadc_mv, (unsigned long)vbat_mv);
+
+    // Check if the ADC reading is a valid battery voltage (e.g., > 2V)
+    // If vadc_mv is ~0 (or very low), it means no battery or broken divider
+    // (like Node 1)
+    if (vadc_mv > 0 && vbat_mv > 2000 && vbat_mv <= 5000) {
       s_battery_real = true;
       ESP_LOGI(TAG, "BAT vadc=%lumV vbat=%lumV pct=%u%%",
                (unsigned long)vadc_mv, (unsigned long)vbat_mv, batt_pct);
@@ -635,16 +644,13 @@ void app_main(void) {
       pme_set_batt_pct(batt_pct);
     } else {
       s_battery_real = false;
-      // Mock Mode or Fallback
-#if ENABLE_MOCK_SENSORS
-      // Simulate battery drain
-      static uint8_t sim_batt = 100;
-      static int calls = 0;
-      if (calls++ % 10 == 0 && sim_batt > 10)
-        sim_batt--;
-      batt_pct = sim_batt;
-      vbat_mv = 3300 + (sim_batt * 9); // Approximate 3.3V - 4.2V mapped
-      ESP_LOGW(TAG, "[MOCK] Battery: %u%% (Simulated)", batt_pct);
+      // Fallback: Mock Mode or USB Power
+
+#if ENABLE_MOCK_BATTERY
+      // Static mock mode (steady, non-degrading 100%)
+      batt_pct = 100;
+      vbat_mv = 4200; // Simulated full battery voltage
+      ESP_LOGW(TAG, "[MOCK] Battery: %u%% (Simulated Full)", batt_pct);
       pme_set_batt_pct(batt_pct);
 #else
       // Fallback for USB power (no battery detected but node is running)
@@ -678,7 +684,8 @@ void app_main(void) {
     uint64_t now_ms = esp_timer_get_time() / 1000ULL;
 
     // Mode defaults; config overrides when in valid range [1s, 24h]
-    uint32_t env_default, gas_default, mag_default, power_default, audio_default;
+    uint32_t env_default, gas_default, mag_default, power_default,
+        audio_default;
     switch (mode) {
     case PME_MODE_NORMAL:
       env_default = 60000;

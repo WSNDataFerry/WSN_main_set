@@ -54,6 +54,8 @@
 // When 1: allow simulated battery drain in main loop when no battery hw; when
 // 0: use dummy 100% only
 #define ENABLE_MOCK_SENSORS 1
+#define ENABLE_MOCK_BATTERY                                                    \
+  0 // Set to 1 to mock battery, 0 to read from real ADC hardware
 #define USE_STELLAR_ALGORITHM 1
 // Smooth STELLAR score to avoid re-election from brief dips (0.1 = slow, 0.3 =
 // fast)
