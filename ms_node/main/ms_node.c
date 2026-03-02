@@ -621,15 +621,10 @@ void app_main(void) {
     // ---- Battery read (real) ----
     uint32_t vadc_mv = 0, vbat_mv = 0;
     uint8_t batt_pct = 0;
-    bool use_mock_battery = false;
-
-#if ENABLE_MOCK_BATTERY
-    use_mock_battery = true;
-#endif
 
     // DEBUG: Always attempt a hardware read to see raw values
     battery_read(&vadc_mv, &vbat_mv, &batt_pct);
-    ESP_LOGW(TAG, "RAW HARDWARE ADC: vadc=%lumV vbat_calc=%lumV",
+    ESP_LOGI(TAG, "RAW HARDWARE ADC: vadc=%lumV vbat_calc=%lumV",
              (unsigned long)vadc_mv, (unsigned long)vbat_mv);
 
     // Check if the ADC reading is a valid battery voltage (e.g., > 2V)

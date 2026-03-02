@@ -1,4 +1,18 @@
-# MS Node - Environmental Sensor Node for Delay-Tolerant Networks
+# Multisensor Node (WSN) - MS-Node
+
+## Persistent High-Light Features (Demo-Ready)
+
+### 1. Dynamic Battery Hardware Auto-Detection
+The node firmware autonomously determines its power source topology at runtime.
+- **Active Battery**: If a voltage divider is detected on `GPIO 4` (2V-5V), the node uses real-time hardware ADC readings and calculates actual discharge percentages.
+- **Fail-Safe Fallback**: If the hardware is disconnected or broken (reading near 0V), the node automatically switches to a steady-state 75% simulated battery. This prevents "Dead Battery" re-election loops in the cluster.
+
+### 2. Self-Healing STELLAR Cluster Architecture
+The network is designed for high-availability in disconnected zones.
+- **CH Failure Recovery**: If a Cluster Head (CH) goes offline, the remaining nodes detect the missing heartbeat and trigger an automatic re-election within 5 seconds using the Nash-Bargaining STELLAR algorithm.
+- **Member Eviction**: Non-responsive members are automatically evicted from the TDMA schedule after a 60-second timeout to maintain superframe efficiency.
+
+---
 
 ## Overview
 
