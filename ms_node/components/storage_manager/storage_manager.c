@@ -7,6 +7,7 @@
 #include "esp_heap_caps.h"
 #include "rom/crc.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include <stdio.h>
 #include <string.h>
@@ -15,6 +16,31 @@
 #include <unistd.h>
 
 static const char *TAG = "STORAGE";
+
+// ── Thread-safety mutex for MSLG data file (data.lz) ─────────────────
+// Multiple FreeRTOS tasks access data.lz concurrently:
+//   1. Main loop task     – write_compressed (stores own sensor seq)
+//   2. Wi-Fi driver task  – write_compressed (CH receives MBR data via ESP-NOW)
+//   3. State machine task – pop_mslg_chunks_batch (burst drain) + requeue
+//
+// While ESP-IDF's VFS layer locks individual POSIX calls (fopen/fread/fwrite),
+// multi-step operations like pop_mslg_chunks_batch (read → copy tail → rename)
+// are NOT atomic.  A concurrent write_compressed between the read and rename
+// would be silently lost.  This mutex serialises all data.lz operations.
+// ──────────────────────────────────────────────────────────────────────
+static SemaphoreHandle_t s_mslg_mutex = NULL;
+
+// Timeout for mutex acquisition — generous to cover worst-case SPIFFS I/O
+#define MSLG_MUTEX_TIMEOUT_MS 5000
+
+static inline bool mslg_lock(void) {
+    if (!s_mslg_mutex) return true;  // Not yet initialised — single-threaded init phase
+    return xSemaphoreTake(s_mslg_mutex, pdMS_TO_TICKS(MSLG_MUTEX_TIMEOUT_MS)) == pdTRUE;
+}
+
+static inline void mslg_unlock(void) {
+    if (s_mslg_mutex) xSemaphoreGive(s_mslg_mutex);
+}
 
 #define BASE_PATH "/spiffs"
 #define DATA_FILE "/spiffs/data.txt"
@@ -45,8 +71,65 @@ static const uint32_t MSLG_MAGIC = 0x4D534C47U; // MSLG
 static const uint16_t MSLG_VERSION = 2;
 static uint64_t s_node_id = 0;  // Cached node ID
 
+// ── Cached MSLG chunk count ──────────────────────────────────────────
+// Scanning every chunk header via SPIFFS fseek is O(n) SPI-flash reads.
+// At 100+ chunks the scan exceeds the task-WDT timeout (~5 s).  We keep
+// the count in RAM and update it on write / pop / purge / clear.
+// -1 = "not yet initialised — do ONE file scan on first access".
+static int s_mslg_chunk_count = -1;
+
+// SPIFFS capacity threshold: purge all stored data when usage exceeds this
+// percentage.  The CH accumulates its own sensor readings plus all member
+// data forwarded via ESP-NOW.  Without a UAV offload the partition will
+// eventually fill up.  Rather than silently dropping new data we wipe the
+// store so the node can keep operating and collecting fresh readings.
+#define SPIFFS_PURGE_THRESHOLD_PCT 90
+
 // Future: Add SD Card support here
 // static bool using_sd_card = false;
+
+/**
+ * @brief Check SPIFFS usage and purge ALL stored data when capacity exceeds
+ *        SPIFFS_PURGE_THRESHOLD_PCT.
+ *
+ * Deletes data.lz, data.txt, and queue.txt so the node can continue to
+ * collect new sensor readings instead of silently failing writes.
+ *
+ * @return true  if a purge was performed (caller may retry the write)
+ * @return false if usage is below threshold (no action taken)
+ */
+static bool storage_manager_purge_if_full(void) {
+    size_t total = 0, used = 0;
+    if (esp_spiffs_info(NULL, &total, &used) != ESP_OK || total == 0) {
+        return false;
+    }
+    uint32_t used_pct = (used * 100) / total;
+    if (used_pct < SPIFFS_PURGE_THRESHOLD_PCT) {
+        return false;
+    }
+
+    ESP_LOGW(TAG, "╔══════════════════════════════════════════════════════════╗");
+    ESP_LOGW(TAG, "║  SPIFFS %lu%% FULL — PURGING ALL STORED DATA             ║",
+             (unsigned long)used_pct);
+    ESP_LOGW(TAG, "╚══════════════════════════════════════════════════════════╝");
+
+    // Remove every data file we manage
+    unlink(DATA_FILE_COMPRESSED);  // data.lz  (MSLG chunks)
+    unlink(DATA_FILE);             // data.txt (plain-text queue source)
+    unlink(QUEUE_FILE);            // queue.txt (in-progress upload)
+
+    // Files gone — cached chunk count is now zero
+    s_mslg_chunk_count = 0;
+
+    // Log post-purge free space
+    if (esp_spiffs_info(NULL, &total, &used) == ESP_OK) {
+        ESP_LOGW(TAG, "PURGE complete — SPIFFS now %lu / %lu bytes used (%lu%%)",
+                 (unsigned long)used, (unsigned long)total,
+                 (unsigned long)((used * 100) / total));
+    }
+    return true;
+}
+
 void storage_manager_display_status(void) {
   size_t total = 0, used = 0;
   if (esp_spiffs_info(NULL, &total, &used) == ESP_OK) {
@@ -103,6 +186,15 @@ static uint32_t get_timestamp(void) {
 esp_err_t storage_manager_init(void) {
   ESP_LOGI(TAG, "Initializing SPIFFS...");
 
+  // Create MSLG mutex for thread-safe data.lz access
+  if (!s_mslg_mutex) {
+    s_mslg_mutex = xSemaphoreCreateMutex();
+    if (!s_mslg_mutex) {
+      ESP_LOGE(TAG, "Failed to create MSLG mutex!");
+      return ESP_ERR_NO_MEM;
+    }
+  }
+
   esp_vfs_spiffs_conf_t conf = {.base_path = BASE_PATH,
                                 .partition_label = NULL,
                                 .max_files = 5,
@@ -143,9 +235,19 @@ esp_err_t storage_manager_init(void) {
 static esp_err_t write_mslg_chunk(const uint8_t *data, size_t data_len, 
                                    uint32_t raw_len, bool compressed, 
                                    uint8_t *compressed_buf, size_t compressed_len) {
+    // ── Thread-safe: acquire MSLG mutex ──
+    if (!mslg_lock()) {
+        ESP_LOGE(TAG, "write_mslg_chunk: mutex timeout — SPIFFS contention");
+        return ESP_ERR_TIMEOUT;
+    }
+
+    // ── Pre-flight: purge stored data if SPIFFS is nearly full ──
+    storage_manager_purge_if_full();
+
     FILE *f = fopen(DATA_FILE_COMPRESSED, "ab");
     if (!f) {
         ESP_LOGE(TAG, "Failed to open compressed data file for writing");
+        mslg_unlock();
         return ESP_FAIL;
     }
 
@@ -173,9 +275,28 @@ static esp_err_t write_mslg_chunk(const uint8_t *data, size_t data_len,
     }
     fclose(f);
 
+    // ── If the write failed (likely SPIFFS full), purge and retry once ──
     if (!write_ok) {
-        ESP_LOGE(TAG, "Failed to write MSLG chunk");
-        return ESP_FAIL;
+        ESP_LOGW(TAG, "MSLG write failed — attempting purge + retry");
+        if (storage_manager_purge_if_full()) {
+            // Retry after purge
+            f = fopen(DATA_FILE_COMPRESSED, "ab");
+            if (f) {
+                write_ok = true;
+                if (fwrite(&hdr, 1, sizeof(hdr), f) != sizeof(hdr)) {
+                    write_ok = false;
+                } else if (payload_len > 0 &&
+                           fwrite(payload, 1, payload_len, f) != payload_len) {
+                    write_ok = false;
+                }
+                fclose(f);
+            }
+        }
+        if (!write_ok) {
+            ESP_LOGE(TAG, "Failed to write MSLG chunk even after purge");
+            mslg_unlock();
+            return ESP_FAIL;
+        }
     }
 
     if (compressed) {
@@ -186,6 +307,13 @@ static esp_err_t write_mslg_chunk(const uint8_t *data, size_t data_len,
         ESP_LOGI(TAG, "MSLG chunk written: RAW %u bytes | CRC32=0x%08X",
                  (unsigned)raw_len, (unsigned)hdr.crc32);
     }
+
+    // Keep cached chunk count in sync
+    if (s_mslg_chunk_count >= 0) {
+        s_mslg_chunk_count++;
+    }
+
+    mslg_unlock();
     return ESP_OK;
 }
 
@@ -223,12 +351,16 @@ size_t storage_manager_read_all(char *buffer, size_t max_len) {
 }
 
 esp_err_t storage_manager_clear(void) {
+  mslg_lock();
   if (unlink(DATA_FILE) == 0) {
     ESP_LOGI(TAG, "Data file deleted");
   }
   if (unlink(DATA_FILE_COMPRESSED) == 0) {
     ESP_LOGI(TAG, "Compressed data file deleted");
   }
+  // Files gone — cached chunk count is now zero
+  s_mslg_chunk_count = 0;
+  mslg_unlock();
   // If file doesn't exist, unlink returns -1 but errno=ENOENT. We consider that success.
   return ESP_OK;
 }
@@ -552,6 +684,55 @@ esp_err_t storage_manager_get_compression_stats(size_t *raw_bytes_out, size_t *c
     return ESP_OK;
 }
 
+int storage_manager_get_mslg_chunk_count(void) {
+    if (s_mslg_chunk_count >= 0) {
+        return s_mslg_chunk_count;          // Fast path — cached (atomic int read)
+    }
+
+    // First call: one-time file scan to seed the cache
+    if (!mslg_lock()) {
+        return 0;  // Can't lock — return safe default
+    }
+
+    // Double-check after lock (another task may have initialised it)
+    if (s_mslg_chunk_count >= 0) {
+        mslg_unlock();
+        return s_mslg_chunk_count;
+    }
+
+    FILE *f = fopen(DATA_FILE_COMPRESSED, "rb");
+    if (!f) {
+        s_mslg_chunk_count = 0;
+        mslg_unlock();
+        return 0;
+    }
+    int count = 0;
+    while (1) {
+        mslg_chunk_hdr_t hdr;
+        if (fread(&hdr, sizeof(hdr), 1, f) != 1) {
+            break;
+        }
+        if (hdr.magic != MSLG_MAGIC) {
+            break;
+        }
+        count++;
+        // Skip payload
+        fseek(f, hdr.data_len, SEEK_CUR);
+    }
+    fclose(f);
+    s_mslg_chunk_count = count;
+    mslg_unlock();
+    return count;
+}
+
+// Public wrapper so other modules (diagnostics, tests) can trigger a purge
+bool storage_manager_purge_if_full_public(void) {
+    mslg_lock();
+    bool purged = storage_manager_purge_if_full();
+    mslg_unlock();
+    return purged;
+}
+
 // ----------------------------------------------------------------------
 // Pop-first MSLG chunk implementation
 // ----------------------------------------------------------------------
@@ -562,6 +743,11 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
     return ESP_ERR_INVALID_ARG;
   }
 
+  if (!mslg_lock()) {
+    ESP_LOGE(TAG, "pop_mslg_chunk: mutex timeout");
+    return ESP_ERR_TIMEOUT;
+  }
+
   *out_payload = NULL;
   *out_payload_len = 0;
   if (out_raw_len) *out_raw_len = 0;
@@ -570,6 +756,7 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
 
   FILE *f = fopen(DATA_FILE_COMPRESSED, "rb");
   if (!f) {
+    mslg_unlock();
     return ESP_ERR_NOT_FOUND;
   }
 
@@ -577,12 +764,14 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
   mslg_chunk_hdr_t hdr;
   if (fread(&hdr, sizeof(hdr), 1, f) != 1) {
     fclose(f);
+    mslg_unlock();
     return ESP_ERR_NOT_FOUND;
   }
 
   if (hdr.magic != MSLG_MAGIC) {
     ESP_LOGW(TAG, "Invalid MSLG magic while popping chunk");
     fclose(f);
+    mslg_unlock();
     return ESP_ERR_INVALID_STATE;
   }
 
@@ -593,6 +782,7 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
     payload = heap_caps_malloc(hdr.data_len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (!payload) {
       fclose(f);
+      mslg_unlock();
       return ESP_ERR_NO_MEM;
     }
   }
@@ -600,6 +790,7 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
   if (fread(payload, 1, hdr.data_len, f) != hdr.data_len) {
     heap_caps_free(payload);
     fclose(f);
+    mslg_unlock();
     return ESP_FAIL;
   }
 
@@ -609,6 +800,7 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
   if (!out) {
     heap_caps_free(payload);
     fclose(f);
+    mslg_unlock();
     return ESP_FAIL;
   }
 
@@ -620,6 +812,7 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
       fclose(f);
       fclose(out);
       unlink(TEMP_FILE);
+      mslg_unlock();
       return ESP_FAIL;
     }
   }
@@ -634,6 +827,7 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
     // If rename failed, try to restore by deleting temp
     unlink(TEMP_FILE);
     heap_caps_free(payload);
+    mslg_unlock();
     return ESP_FAIL;
   }
 
@@ -648,5 +842,150 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
        hdr.algo, (unsigned)hdr.raw_len, (unsigned)hdr.data_len,
        (unsigned)hdr.timestamp);
 
+  // Keep cached chunk count in sync (we just removed one chunk)
+  if (s_mslg_chunk_count > 0) {
+      s_mslg_chunk_count--;
+  }
+
+  mslg_unlock();
+  return ESP_OK;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Batch pop: read up to max_chunks from the front of data.lz in ONE pass,
+ * copy the remaining tail ONCE, then replace the file.
+ *
+ * Old approach:  O(N) file rewrites  → ~900ms × N on SPIFFS.
+ * New approach:  O(1) file rewrite   → ~900ms total regardless of N.
+ *
+ * With a 7.5 s TDMA slot and ~1 ms per ESP-NOW send (+ 120 ms BLE-quiet
+ * that we also optimise away in send_data_fast), the slot can now drain
+ * the entire backlog instead of being capped at 6-7 chunks.
+ * ──────────────────────────────────────────────────────────────────────── */
+esp_err_t storage_manager_pop_mslg_chunks_batch(mslg_popped_chunk_t *out_chunks,
+                                                 int max_chunks,
+                                                 int *out_count) {
+  if (!out_chunks || !out_count || max_chunks <= 0) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  *out_count = 0;
+
+  if (!mslg_lock()) {
+    ESP_LOGE(TAG, "pop_mslg_chunks_batch: mutex timeout");
+    return ESP_ERR_TIMEOUT;
+  }
+
+  FILE *f = fopen(DATA_FILE_COMPRESSED, "rb");
+  if (!f) {
+    mslg_unlock();
+    return ESP_ERR_NOT_FOUND;
+  }
+
+  int popped = 0;
+
+  /* ── Phase 1: Read up to max_chunks headers + payloads ───────────── */
+  for (int i = 0; i < max_chunks; i++) {
+    mslg_chunk_hdr_t hdr;
+    if (fread(&hdr, sizeof(hdr), 1, f) != 1) {
+      break; // EOF or partial header → stop
+    }
+    if (hdr.magic != MSLG_MAGIC) {
+      ESP_LOGW(TAG, "Batch pop: bad magic at chunk %d, stopping", i);
+      break;
+    }
+
+    uint8_t *payload = heap_caps_malloc(hdr.data_len, MALLOC_CAP_8BIT);
+    if (!payload) {
+      payload = heap_caps_malloc(hdr.data_len, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    }
+    if (!payload) {
+      ESP_LOGW(TAG, "Batch pop: OOM at chunk %d (need %u B)", i, (unsigned)hdr.data_len);
+      /* Seek back to start of this chunk so it stays in the file */
+      fseek(f, -(long)sizeof(hdr), SEEK_CUR);
+      break;
+    }
+
+    if (fread(payload, 1, hdr.data_len, f) != hdr.data_len) {
+      heap_caps_free(payload);
+      ESP_LOGW(TAG, "Batch pop: short read at chunk %d", i);
+      break;
+    }
+
+    out_chunks[i].payload     = payload;
+    out_chunks[i].payload_len = hdr.data_len;
+    out_chunks[i].raw_len     = hdr.raw_len;
+    out_chunks[i].algo        = hdr.algo;
+    out_chunks[i].timestamp   = hdr.timestamp;
+    popped++;
+  }
+
+  if (popped == 0) {
+    fclose(f);
+    mslg_unlock();
+    return ESP_ERR_NOT_FOUND;
+  }
+
+  /* ── Phase 2: Copy remaining tail to temp file (ONE rewrite) ────── */
+  const char *TEMP_FILE = "/spiffs/temp.mslg";
+  long tail_pos = ftell(f);
+  bool has_tail = false;
+
+  /* Peek: is there anything left? */
+  uint8_t peek;
+  if (fread(&peek, 1, 1, f) == 1) {
+    has_tail = true;
+    fseek(f, tail_pos, SEEK_SET);
+  }
+
+  if (has_tail) {
+    FILE *out = fopen(TEMP_FILE, "wb");
+    if (!out) {
+      /* Can't write temp — free everything and bail */
+      for (int i = 0; i < popped; i++) {
+        heap_caps_free(out_chunks[i].payload);
+        out_chunks[i].payload = NULL;
+      }
+      fclose(f);
+      mslg_unlock();
+      return ESP_FAIL;
+    }
+
+    uint8_t buf[1024];
+    size_t r;
+    while ((r = fread(buf, 1, sizeof(buf), f)) > 0) {
+      if (fwrite(buf, 1, r, out) != r) {
+        fclose(out);
+        fclose(f);
+        unlink(TEMP_FILE);
+        for (int i = 0; i < popped; i++) {
+          heap_caps_free(out_chunks[i].payload);
+          out_chunks[i].payload = NULL;
+        }
+        mslg_unlock();
+        return ESP_FAIL;
+      }
+    }
+
+    fclose(f);
+    fclose(out);
+    unlink(DATA_FILE_COMPRESSED);
+    rename(TEMP_FILE, DATA_FILE_COMPRESSED);
+  } else {
+    /* No tail — the file is now empty */
+    fclose(f);
+    unlink(DATA_FILE_COMPRESSED);
+  }
+
+  /* ── Phase 3: Update cached count ──────────────────────────────── */
+  if (s_mslg_chunk_count >= popped) {
+    s_mslg_chunk_count -= popped;
+  } else {
+    s_mslg_chunk_count = 0;
+  }
+
+  *out_count = popped;
+  ESP_LOGI(TAG, "Batch popped %d MSLG chunks in one SPIFFS pass, remaining≈%d",
+           popped, s_mslg_chunk_count);
+  mslg_unlock();
   return ESP_OK;
 }

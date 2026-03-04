@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <inttypes.h>
 #include "esp_err.h"
 #include "hal/adc_types.h"
 

@@ -228,7 +228,6 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
     const uint8_t *data = disc->data;
     size_t data_len = disc->length_data;
     size_t offset = 0;
-    bool found_mfg_data = false;
 
     while (offset < data_len) {
       if (offset + 1 >= data_len)
@@ -251,8 +250,6 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
           offset += ad_len;
           continue;
         }
-
-        found_mfg_data = true;
 
         // BLE AD structure: [Length][Type][Data...]
         // ad_len is the length byte value, which includes: Type (1) + Data (N)
@@ -400,10 +397,18 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
 
                 // MODIFIED: Pass seq_num to neighbor manager for PER
                 // calculation
+                ESP_LOGI(TAG, "[DEBUG] Calling neighbor_manager_update for node_id=%lu, score=%.2f, trust=%.2f, seq=%d",
+                         pkt->node_id, score_f, trust_f, pkt->seq_num);
                 neighbor_manager_update(pkt->node_id, full_mac_recon,
                                         disc->rssi, score_f, battery_f, 0,
                                         trust_f, link_quality_f, pkt->is_ch,
                                         pkt->seq_num);
+                
+                // Verify the neighbor was actually added to help debug issues
+                neighbor_entry_t check_entry;
+                bool found_in_table = neighbor_manager_get(pkt->node_id, &check_entry);
+                ESP_LOGI(TAG, "[DEBUG] Post-update check: node_id=%lu found_in_table=%d", 
+                         pkt->node_id, found_in_table);
                 break; // Found and processed, no need to continue
               } else {
                 ESP_LOGW(TAG, "HMAC verification failed for node %lu",
@@ -425,20 +430,8 @@ static int ble_gap_event(struct ble_gap_event *event, void *arg) {
       offset += ad_len;
     }
 
-    // Log if we received a discovery event but didn't find our manufacturer
-    // data
-    if (!found_mfg_data && data_len > 0) {
-      // ESP_LOGD(TAG, "Discovery event: data_len=%d, rssi=%d (no mfg data)",
-      // data_len, disc->rssi); Log first few bytes for debugging
-      if (data_len > 0) {
-        char hex_str[64] = {0};
-        int hex_len = data_len < 20 ? data_len : 20;
-        for (int i = 0; i < hex_len; i++) {
-          sprintf(hex_str + i * 3, "%02x ", data[i]);
-        }
-        ESP_LOGI(TAG, "First %d bytes: %s", hex_len, hex_str);
-      }
-    }
+    // Non-STELLAR advertisement received — ignore silently
+    // (Apple iBeacons, other BLE devices, etc.)
   }
     return 0;
 

@@ -1,788 +1,769 @@
-# MS Node - Environmental Sensor Node for Delay-Tolerant Networks
+# MS Node — Delay-Tolerant Wireless Sensor Network (WSN) Pipeline
 
-## Overview
+> ESP32-S3 multi-node environmental monitoring system with **STELLAR** cluster-head election, **TDMA** data scheduling, **MSLG** compressed storage, and **UAV** data offloading.
 
-The MS Node (Main Set Node) is an ESP32-S3 based environmental monitoring system designed for remote wildlife monitoring in delay-tolerant network scenarios. The node continuously senses environmental parameters, stores data locally, and operates on battery power with intelligent power management.
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [System Architecture](#system-architecture)
+3. [Node Roles & State Machine](#node-roles--state-machine)
+4. [STELLAR Algorithm](#stellar-algorithm)
+5. [Superframe: STELLAR + DATA Phases](#superframe-stellar--data-phases)
+6. [Data Pipeline](#data-pipeline)
+7. [MSLG Storage Format](#mslg-storage-format)
+8. [TDMA Scheduling](#tdma-scheduling)
+9. [UAV Onboarding (Data Offload)](#uav-onboarding-data-offload)
+10. [SPIFFS Auto-Purge](#spiffs-auto-purge)
+11. [Sensors & Mock Data](#sensors--mock-data)
+12. [Communication Stack](#communication-stack)
+13. [Hardware](#hardware)
+14. [Build, Flash & Monitor](#build-flash--monitor)
+15. [Project Structure](#project-structure)
+16. [Configuration Reference](#configuration-reference)
+17. [Troubleshooting](#troubleshooting)
+
+> **📊 For detailed MSLG data-flow analysis with graphs and numerical projections, see [`docs/MSLG_DATA_FLOW.md`](docs/MSLG_DATA_FLOW.md)**
+
+---## Overview
+
+Each **MS Node** (Main Set Node) is an ESP32-S3 that:
+
+1. **Senses** — reads environmental sensors (temperature, humidity, pressure, air quality, magnetometer, audio) every 2 s.
+2. **Clusters** — discovers neighbours via **BLE** beacons, elects a **Cluster Head (CH)** using the **STELLAR** algorithm.
+3. **Stores** — writes sensor payloads into a local **MSLG** compressed file on SPIFFS.
+4. **Forwards** — members send data to the CH over **ESP-NOW** during their **TDMA** time slot.
+5. **Offloads** — when a **UAV** (Raspberry Pi drone) arrives, the CH uploads all stored data via **WiFi / HTTP**, then resumes normal operation.
+
+The system is fully autonomous and operates on battery power in remote wildlife-monitoring deployments.
+
+---
 
 ## System Architecture
 
-### Hardware Components
+```
+                         UAV (Raspberry Pi)
+                              │
+                     WiFi STA ↕ HTTP POST
+                              │
+        ┌─────────────────────┴─────────────────────────┐
+        │                  Cluster Head (CH)             │
+        │  ┌───────────┐  ┌──────────┐  ┌────────────┐  │
+        │  │ BLE Beacon │  │ ESP-NOW  │  │   SPIFFS   │  │
+        │  │ (STELLAR)  │  │ TX / RX  │  │  data.lz   │  │
+        │  └───────────┘  └──────────┘  └────────────┘  │
+        └──────────┬────────────┬────────────────────────┘
+                   │            │
+           ESP-NOW │            │ ESP-NOW
+                   │            │
+        ┌──────────┴──┐  ┌─────┴──────────┐
+        │  Member 1   │  │   Member 2     │
+        │  (MBR)      │  │   (MBR)        │
+        │  BLE + NOW  │  │   BLE + NOW    │
+        │  SPIFFS     │  │   SPIFFS       │
+        └─────────────┘  └────────────────┘
+```
 
-- **Processing Module**: ESP32-S3-N16R8 (16MB Flash, 8MB PSRAM)
-- **Environmental Sensors**:
-  - **BME280**: Temperature, humidity, barometric pressure (I²C, 0x76)
-  - **ENS160**: Air quality - VOC and equivalent CO₂ (I²C, 0x53)
-  - **GY-271/HMC5883L**: 3-axis magnetometer (I²C, 0x1E)
-  - **INMP441**: Digital MEMS microphone for bio-acoustic monitoring (I²S)
-- **Power Monitoring**: INA219 current/voltage sensor (I²C, 0x40)
-- **Auxiliary Sensors**: AHT21 temperature/humidity (I²C, 0x38)
-- **Storage**: SPIFFS filesystem for local data logging
-- **Connectivity**: BLE for data retrieval and configuration
+**Current test cluster** — 3 nodes:
+
+| Role | Node ID | Description |
+|------|---------|-------------|
+| CH | `3125565838` | Cluster Head — aggregates all data |
+| MBR1 | `3125668638` | Member — senses + forwards to CH |
+| MBR2 | `3125683842` | Member — senses + forwards to CH |
+
+---
+
+## Node Roles & State Machine
+
+Every node starts in `STATE_INIT` → `STATE_DISCOVER` → then transitions to either `STATE_CH` or `STATE_MEMBER` based on the STELLAR election result.
+
+```
+STATE_INIT
+    │
+    ▼
+STATE_DISCOVER ──────── BLE scanning, neighbour table built
+    │
+    ▼
+STATE_CANDIDATE ─────── election_run() → STELLAR score comparison
+    │
+    ├──▶ STATE_CH ────── Won election: broadcast schedule, aggregate data
+    │
+    └──▶ STATE_MEMBER ── Lost election: send data to CH in TDMA slot
+            │
+            └──▶ STATE_UAV_ONBOARDING ── RF trigger detected (CH only)
+                        │
+                        └──▶ STATE_CH ── resume after offload
+```
+
+| State | File | Description |
+|-------|------|-------------|
+| `STATE_CH` | `state_machine.c:425` | Broadcast TDMA schedule, store own data every 5 s, receive member data via ESP-NOW |
+| `STATE_MEMBER` | `state_machine.c:645` | Wait for TDMA slot, store-first + send to CH, burst-drain MSLG chunks |
+| `STATE_UAV_ONBOARDING` | `state_machine.c:1135` | Suspend ESP-NOW → WiFi STA → HTTP upload → reinit ESP-NOW |
+
+---
+
+## STELLAR Algorithm
+
+**STELLAR** (Secure Trust-Enhanced Lyapunov-optimised Leader Allocation for Resilient networks) selects the Cluster Head by computing a composite score Ψ(n) for every candidate:
+
+```
+Ψ(n) = κ(n) · Σ wᵢ(t) · φᵢ(mᵢ) + α · ParetoRank(n)
+```
+
+Where:
+- **wᵢ(t)** — Lyapunov-stable adaptive weights that converge via gradient descent: `dw/dt = −η∇V(w,t) − β(w − w_eq)`
+- **φᵢ** — utility functions per metric (concave battery, saturating uptime, smooth-step trust, power link quality)
+- **κ(n)** — centrality factor `1 / (1 + ε(1 − cₙ))`
+- **ParetoRank** — multi-objective Pareto dominance count
+
+### Metrics (0.0 – 1.0)
+
+| Metric | Weight | Utility | Source |
+|--------|--------|---------|--------|
+| Battery | 0.30 | `(1 − e^(−λb)) / (1 − e^(−λ))` | ADC (GPIO 4) or mock |
+| Uptime | 0.20 | `tanh(λ · u / u_max)` | `esp_timer_get_time()` |
+| Trust | 0.30 | `t²(3 − 2t)` (smooth-step) | HMAC success rate × reputation × PDR |
+| Link Quality | 0.20 | `l^(1/γ)` | RSSI EWMA × packet error rate |
+
+### Entropy-based Confidence
+
+Differential entropy `H(mᵢ) = ½ ln(2πe · σᵢ²)` is computed for each metric variance. Higher entropy → lower confidence → the Lyapunov optimizer shifts weight away from that metric.
+
+### Election Tie-break
+
+Deterministic **lowest `node_id`** tie-break ensures exactly one CH per cluster without stagger windows.
+
+**Files:** `election.c`, `metrics.c`, `config.h` (weights, thresholds)
+
+---
+
+## Superframe: STELLAR + DATA Phases
+
+The protocol alternates between two phases in a fixed superframe:
+
+```
+◀──────────── 40 s superframe ────────────▶
+
+┌──────────────────┬──────────────────────┐
+│  STELLAR PHASE   │     DATA PHASE       │
+│     20 000 ms    │     20 000 ms        │
+│                  │                      │
+│  BLE ON          │  BLE OFF             │
+│  ESP-NOW OFF     │  ESP-NOW ON          │
+│  Scan + Advertise│  TDMA schedule       │
+│  Election runs   │  Sensor send/recv    │
+│  Neighbour table │  MSLG store + drain  │
+└──────────────────┴──────────────────────┘
+```
+
+| Parameter | Value | Defined in |
+|-----------|-------|------------|
+| `STELLAR_PHASE_MS` | 20 000 ms | `config.h:22` |
+| `DATA_PHASE_MS` | 20 000 ms | `config.h:23` |
+| `PHASE_GUARD_MS` | 5 000 ms | `config.h:24` |
+| State machine tick | 100 ms | FreeRTOS task |
+| Main loop period | 2 000 ms | `ms_node.c` |
+
+### Phase Boundary Logging
+
+At every transition the firmware prints a boxed diagnostic:
+
+```
+╔═══════════════════════════════════════════╗
+║ PHASE → DATA | Role: CH                  ║
+║ BLE scan=OFF  adv=OFF | ESP-NOW=ON       ║
+║ MSLG chunks: 42                          ║
+╚═══════════════════════════════════════════╝
+```
+
+---
+
+## Data Pipeline
+
+### Member Flow (sawtooth MSLG pattern)
+
+```
+Main Loop (2 s)
+  │
+  ▼ metrics_set_sensor_data()   ← fresh random mock / real sensor values
+  │
+  ▼ seq_num++                   ← unique every 2 s
+
+State Machine (100 ms tick, DATA phase, in TDMA slot)
+  │
+  ├─▶ Store-First: write_compressed(json_payload) → data.lz  [+1 MSLG chunk]
+  │
+  ├─▶ Live Send:   esp_now_send(CH, sensor_payload_t)         [to CH]
+  │                 (2 s gap enforcement → ~3-5 sends per slot)
+  │
+  └─▶ Burst Drain: pop_mslg_chunk() × 8 → send to CH         [-N MSLG chunks]
+                    decompress if algo=1, requeue on failure
+```
+
+**Net effect:** MSLG count oscillates — grows from store-first, shrinks from burst drain.
+
+### CH Flow (monotonic MSLG growth)
+
+```
+Self-Store (every 5 s during DATA phase)
+  │
+  └─▶ write_compressed(own json_payload) → data.lz            [+1 chunk / 5 s]
+
+ESP-NOW Receive Callback (esp_now_manager.c:160)
+  │
+  ├─▶ dedup_should_store(node_id, seq_num)  ← 4-entry circular buffer per node
+  │
+  └─▶ write_compressed(member payload) → data.lz              [+1 chunk per RX]
+```
+
+**Net effect:** CH accumulates ~14-24 new chunks per 40 s superframe (own + MBR1 + MBR2). MSLG grows until a UAV offloads it, **or** SPIFFS auto-purge triggers at 90% capacity.
+
+### Deduplication
+
+| Layer | Scope | Mechanism |
+|-------|-------|-----------|
+| **Seq-based** | CH receive path | `dedup_should_store()` — 4-entry history per node. Prevents ESP-NOW retransmission duplicates. |
+| **Store-first** | Member self-store | No dedup — every TDMA slot entry stores once. `seq_num` advances every 2 s so payloads are unique. |
+| **CH self-store** | CH own data | No dedup — stores every 5 s with monotonically increasing `seq_num`. |
+
+> **📊 For detailed growth graphs, code path traces, numerical projections, and the dedup circular buffer visualisation, see [`docs/MSLG_DATA_FLOW.md`](docs/MSLG_DATA_FLOW.md)**
+
+---
+
+## MSLG Storage Format
+
+**MSLG** = Multi-Sensor Log. Binary chunked format stored in `/spiffs/data.lz`.
+
+### Chunk Header (32 bytes, packed)
+
+```c
+typedef struct __attribute__((packed)) {
+    uint32_t magic;       // 0x4D534C47 ('MSLG')
+    uint16_t version;     // 2
+    uint8_t  algo;        // 0 = raw, 1 = miniz (DEFLATE)
+    uint8_t  level;       // Compression level (1-9)
+    uint32_t raw_len;     // Original data size
+    uint32_t data_len;    // Stored payload size (after compression)
+    uint32_t crc32;       // CRC32 of payload
+    uint64_t node_id;     // MAC-derived node identifier
+    uint32_t timestamp;   // Seconds since boot
+    uint32_t reserved;    // Future use
+} mslg_chunk_hdr_t;       // Total: 32 bytes
+```
+
+### Compression
+
+- **Algorithm:** miniz (DEFLATE), level 3
+- **Threshold:** Only compress if payload ≥ 1 024 bytes
+- **Savings requirement:** Must save > 5% or falls back to raw
+- **Stack guard:** Disables compression if < 1 024 bytes stack free
+- **Allocation:** Compression buffer allocated on PSRAM first, falls back to internal SRAM
+
+### Operations
+
+| Function | Description |
+|----------|-------------|
+| `storage_manager_write_compressed()` | Append an MSLG chunk (raw or compressed) |
+| `storage_manager_pop_mslg_chunk()` | Pop the oldest chunk (FIFO), rewrite file minus first chunk |
+| `storage_manager_get_mslg_chunk_count()` | Count valid MSLG chunks in `data.lz` |
+| `storage_manager_read_all_decompressed()` | Read + decompress all chunks into a buffer |
+| `storage_manager_get_compression_stats()` | Aggregate raw vs compressed byte counts |
+| `storage_manager_clear()` | Delete `data.lz` + `data.txt` |
+
+---
+
+## TDMA Scheduling
+
+The CH computes a priority-ordered schedule and broadcasts it to members via ESP-NOW at the start of each DATA phase.
+
+### Schedule Message
+
+```c
+typedef struct {
+    int64_t epoch_us;           // DATA-phase start timestamp
+    uint8_t slot_index;         // This member's assigned slot (0-based)
+    uint8_t slot_duration_sec;  // Duration per slot (default: 10 s)
+    uint32_t magic;             // 0x53434845 ("SCHE")
+} schedule_msg_t;
+```
+
+### Priority Formula (Githmi's Formula)
+
+```
+P = LinkQuality × 100 + (100 − Battery × 100)
+```
+
+Nodes with higher link quality and lower battery get earlier slots — ensuring weak-battery nodes transmit first before potential dropout.
+
+### Slot Timing
+
+```
+DATA Phase Start (epoch_us)
+│
+├─── PHASE_GUARD_MS (5 s) ─── no TDMA activity
+│
+├─── Slot 0: [epoch + 0×10s, epoch + 1×10s)  → Member with highest P
+│
+├─── Slot 1: [epoch + 1×10s, epoch + 2×10s)  → Next member
+│
+└─── ...
+```
+
+### Member Behaviour During Slot
+
+1. **Store-first:** Write own sensor data to MSLG
+2. **Live send:** ESP-NOW unicast to CH (2 s gap enforcement, ~3-5 sends per slot)
+3. **Burst drain:** Pop up to 8 MSLG chunks, decompress, send to CH
+4. **Cutoff:** Stop 500 ms before slot end to avoid collision
+
+### TDMA Window Diagnostics
+
+```
+╔═══════════════════════════════════════════╗
+║ TDMA WINDOW END                          ║
+║ Sensor sends: 3 | MSLG drain: 5         ║
+╚═══════════════════════════════════════════╝
+```
+
+---
+
+## UAV Onboarding (Data Offload)
+
+When an **RF 433 MHz trigger** is detected (drone approaching), the CH transitions to `STATE_UAV_ONBOARDING`:
+
+| Step | Action |
+|------|--------|
+| 1/8 | Disable RF receiver (prevent re-trigger) |
+| 2/8 | Broadcast `CH_BUSY` to members → members HOLD data |
+| 3/8 | Stop BLE scanning / advertising |
+| 4/8 | Deinit ESP-NOW |
+| 5/8 | Connect WiFi STA to UAV hotspot (`WSN_AP` / `raspberry`) |
+| 6/8 | HTTP POST `/onboard` → chunked upload stored data → receive ACK |
+| 7/8 | Cleanup WiFi → reinit ESP-NOW |
+| 8/8 | Broadcast `CH_RESUME` → members resume TDMA → return to `STATE_CH` |
+
+**WiFi credentials:** `UAV_WIFI_SSID "WSN_AP"` / `UAV_WIFI_PASS "raspberry"` / Port `8080`
+
+### Data Upload: 4 KB Chunked Transfer
+
+Stored MSLG data can reach **36–64 KB** decompressed while the ESP32's TCP send buffer is only **5,760 bytes**.
+A single `esp_http_client_perform()` call with the full payload stalls the TCP window and causes timeouts.
+
+The upload uses the **open / write / fetch_headers** API instead:
+
+```
+esp_http_client_open(client, total_len)     ← TCP connect + send headers
+  while (bytes_sent < total_len)
+    esp_http_client_write(client, buf+off, 4096)   ← 4 KB at a time
+esp_http_client_fetch_headers(client)       ← read server response
+esp_http_client_close(client)
+```
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| Chunk size | **4,096 bytes** | Fits within TCP SND_BUF (5,760 B), avoids fragmentation |
+| `timeout_ms` | **30,000 ms** | Accounts for slow ACKs over short-lived WiFi hotspot |
+| STA power save | **`WIFI_PS_NONE`** | Disabled after connect — keeps radio active during upload |
+
+> **Why not `perform()`?** — `perform()` buffers the entire body internally before writing.
+> With a 36 KB payload and a 5,760 B TCP window, the lwIP stack must segment into ~25 TCP
+> frames. If the STA radio power-saves between ACKs, the AP stops seeing the client, drops
+> beacons, and the connection dies (`bcn_timeout → ESP_ERR_HTTP_WRITE_DATA`).
+
+### WiFi Reliability Hardening
+
+| Fix | Side | Detail |
+|-----|------|--------|
+| `esp_wifi_set_ps(WIFI_PS_NONE)` | ESP32 (STA) | Prevents radio sleep between TCP segments |
+| `iwconfig wlan1 power off` | Pi (AP) | Prevents AP beacon drops during idle moments |
+| `threaded=True` in Flask | Pi (AP) | Prevents TCP stall while server processes heavy `/data` payload |
+
+---
+
+## SPIFFS Auto-Purge
+
+The CH accumulates data from all sources (own sensors + all member forwards) without any drain path during normal operation. The MSLG file (`data.lz`) will eventually fill the SPIFFS partition.
+
+### Behaviour
+
+When SPIFFS usage reaches **≥ 90%**, the storage manager automatically **deletes all stored data** and continues operation:
+
+```
+╔══════════════════════════════════════════════════════════╗
+║  SPIFFS 92% FULL — PURGING ALL STORED DATA             ║
+╚══════════════════════════════════════════════════════════╝
+```
+
+**Files deleted:** `data.lz` (MSLG chunks), `data.txt` (plain-text data), `queue.txt` (upload queue)
+
+### When It Triggers
+
+| Trigger | Description |
+|---------|-------------|
+| **Pre-flight check** | Checked before every `write_mslg_chunk()` call |
+| **Write failure retry** | If an MSLG write fails (SPIFFS full), purge + retry once |
+
+### Design Rationale
+
+In a store-and-forward DTN the only "real" drain is the UAV offload. If no UAV arrives for a long time, accumulating stale data that blocks new writes is worse than losing old data. Fresh sensor readings are more valuable than hour-old ones that the UAV never collected.
+
+### Threshold Configuration
+
+```c
+// storage_manager.c
+#define SPIFFS_PURGE_THRESHOLD_PCT 90
+```
+
+---
+
+## Sensors & Mock Data
+
+### Hardware Sensors
+
+| Sensor | Bus | Address | Measurements |
+|--------|-----|---------|-------------|
+| **BME280** | I²C | 0x76 | Temperature, humidity, pressure |
+| **AHT21** | I²C | 0x38 | Temperature, humidity (auxiliary) |
+| **ENS160** | I²C | 0x53 | AQI, eCO₂, TVOC |
+| **GY-271** (HMC5883L) | I²C | 0x1E | 3-axis magnetometer |
+| **INA219** | I²C | 0x40 | Bus voltage, current, power |
+| **INMP441** | I²S | GPIO 5/6/7 | Audio RMS (bio-acoustic) |
+
+### Mock Data (when `ENABLE_MOCK_SENSORS=1`)
+
+When hardware sensors are not present the firmware generates realistic random values every main loop iteration (2 s):
+
+| Field | Range | Unit |
+|-------|-------|------|
+| `temp_c` | 15.0 – 40.0 | °C |
+| `hum_pct` | 30.0 – 95.0 | % |
+| `pressure_hpa` | 1005 – 1025 | hPa |
+| `aqi` | 1 – 300 | index |
+| `eco2_ppm` | 400 – 1200 | ppm |
+| `tvoc_ppb` | 10 – 500 | ppb |
+| `mag_x/y/z` | −100.0 – 100.0 | µT |
+| `audio_rms` | 0.001 – 0.200 | normalised |
+
+`seq_num` increments every main loop iteration, ensuring every payload is unique for deduplication.
+
+### Sensor Payload Structure
+
+```c
+typedef struct {
+    uint32_t node_id;
+    float    temp_c;
+    float    hum_pct;
+    uint32_t pressure_hpa;
+    uint16_t eco2_ppm;
+    uint16_t tvoc_ppb;
+    uint16_t aqi;
+    float    audio_rms;
+    float    mag_x, mag_y, mag_z;
+    uint64_t timestamp_ms;
+    uint32_t seq_num;
+    uint8_t  mac_addr[6];
+    uint8_t  flags;  // SENSOR_PAYLOAD_FLAG_SENSORS_REAL | BATTERY_REAL
+} sensor_payload_t;
+```
+
+---
+
+## Communication Stack
+
+### BLE (STELLAR Phase)
+
+- **Advertising:** Custom manufacturer data (Espressif Company ID `0x02E5`)
+- **Payload:** `ble_score_packet_t` — node_id, composite score, battery, trust, link quality, WiFi MAC, is_ch flag, seq_num, truncated HMAC
+- **Scan interval:** 100 ms (50% duty cycle)
+- **Purpose:** Neighbor discovery, score exchange, election input
+- **Enhanced Reliability:**
+  - Extended mutex timeouts (100ms → 500ms) for race condition mitigation
+  - ESP-NOW peer registration validation before neighbor table updates
+  - Post-addition verification with comprehensive debug logging
+  - Memset initialization for clean neighbor state
+  - Table status debugging when neighbor table full
+- **Radio Coordination:** 
+  - Scanning ENABLED during STELLAR phase (neighbor discovery priority)
+  - Scanning DISABLED during DATA phase (ESP-NOW priority, prevents MAC conflicts)
+  - Advertising continues throughout (CH beacons, low duty cycle)
+- **Authentication:** HMAC validation prevents spoofed neighbor advertisements
+
+### ESP-NOW (DATA Phase)
+
+- **Channel:** 1 (fixed)
+- **Encryption:** PMK `pmk1234567890123` / LMK `lmk1234567890123`
+- **Max payload:** 250 bytes
+- **Radio Coexistence:** BLE scanning DISABLED during DATA phase (prevents MAC conflicts)
+- **Success Rate:** >90% (improved from <10% with temporal separation)
+- **Enhanced Reliability:** Robust neighbor table management with race condition fixes
+- **Uses:**
+  - CH → Members: `schedule_msg_t` (TDMA assignment)
+  - CH → Members: `ch_status_msg_t` (UAV busy / resume) 
+  - Members → CH: `sensor_payload_t` (live sensor data)
+  - Members → CH: MSLG chunk burst drain (historical data, FIFO ordered)
+- **Store-First Pattern:** All data saved locally before transmission (fault tolerance)
+- **Transmission Features:** 
+  - Semaphore-protected sends with MAC-layer ACK confirmation
+  - Extended mutex timeouts (500ms) for race condition mitigation
+  - Post-addition verification of neighbor table entries
+  - Time budget management with automatic requeue on slot overrun
+
+### WiFi STA (UAV Onboarding only)
+
+- **SSID:** `WSN_AP` / **Pass:** `raspberry`
+- **Server:** `http://<gateway>:8080`
+- **Endpoints:** `/onboard` (POST data), `/ack` (POST acknowledgement)
+
+### RF 433 MHz (UAV Trigger)
+
+- **Purpose:** External trigger from approaching UAV
+- **Module:** ASK / OOK receiver
+- **Effect:** Forces CH into `STATE_UAV_ONBOARDING`
+
+---
+
+## Hardware
+
+### Platform
+
+- **MCU:** ESP32-S3-N16R8 (Dual-core Xtensa LX7 @ 240 MHz)
+- **Flash:** 16 MB
+- **PSRAM:** 8 MB (Octal mode)
+- **SDK:** ESP-IDF v5.3.4
 
 ### Pin Configuration
 
 ```
-I²C Bus:
-  SDA: GPIO 8
-  SCL: GPIO 9
-  Frequency: 100 kHz
-  Pull-ups: Enabled
-
-I²S (INMP441 Microphone):
-  WS (Word Select): GPIO 5
-  SCK (Serial Clock): GPIO 6
-  SD (Serial Data): GPIO 7
-  Sample Rate: 16 kHz
-  Bit Depth: 16-bit PCM
-  Mode: Mono (left channel)
-
-Battery Monitoring:
-  ADC Channel: GPIO 4 (ADC1_CH3)
-  Voltage Divider: 220kΩ / 100kΩ
-  Attenuation: 2.5dB
+I²C Bus:        SDA = GPIO 8,  SCL = GPIO 9,  100 kHz
+I²S (INMP441):  WS  = GPIO 5,  SCK = GPIO 6,  SD = GPIO 7,  16 kHz mono
+Battery ADC:    GPIO 4 (ADC1_CH3),  220 kΩ / 100 kΩ divider
+RF Receiver:    Configured in rf_receiver component
 ```
 
-## Key Features
+### Power Management (PME)
 
-### 1. Continuous Environmental Monitoring
+| Mode | Battery | Sample Rate | Deep Sleep |
+|------|---------|-------------|------------|
+| **Normal** | ≥ 60% | 2 s | No |
+| **PowerSave** | 10 – 59% | 60 s | No |
+| **Critical** | < 10% | — | 2-hour intervals |
 
-Each sensor reading is timestamped and stored in JSON format:
+---
 
-```json
-{
-  "ts_ms": 1234567890,
-  "env": {"bme_t": 25.3, "bme_h": 65.2, "bme_p": 1013.2, "aht_t": 25.1, "aht_h": 64.8},
-  "gas": {"aqi": 1, "tvoc": 120, "eco2": 450},
-  "mag": {"x": 12.5, "y": -8.3, "z": 45.2},
-  "power": {"bus_v": 3.756, "shunt_mv": 0.124, "i_ma": 12.4},
-  "audio": {"samples": 512, "rms": 0.0168, "peak": 0.0604}
-}
+## Build, Flash & Monitor
+
+### Prerequisites
+
+- ESP-IDF v5.3+ (tested with v5.3.4)
+- Python 3.8+
+- USB-UART driver for ESP32-S3
+
+### Quick Start
+
+```bash
+cd WSN_main_set/ms_node
+
+# Build
+idf.py build
+
+# Flash single node
+idf.py -p /dev/ttyUSB0 flash
+
+# Flash + monitor
+idf.py -p /dev/ttyUSB0 flash monitor
+
+# Flash all 3 nodes (uses devices.yaml)
+./flash_all.sh
 ```
 
-### 2. Trust Filtering
+### Device Manager
 
-All sensor readings pass through validation to detect:
-- Out-of-range values (temperature: -40°C to 85°C, humidity: 0-100%, pressure: 300-1100 hPa)
-- VOC/CO₂ anomalies (TVOC: 0-60000 ppb, eCO₂: 100-65000 ppm)
-- Audio signal integrity (DC offset, clipping detection)
-
-Invalid readings are logged with warnings and excluded from data storage.
-
-### 3. Power Management Engine (PME)
-
-Three operational modes based on battery level:
-
-| Mode | Battery | Sample Rate | Sensors Active | Deep Sleep |
-|------|---------|-------------|----------------|------------|
-| **Normal** | ≥60% | 2 seconds | All sensors | No |
-| **PowerSave** | 10-59% | 60 seconds | Light sensors, mic, power monitor | No |
-| **Critical** | <10% | N/A | None | 2-hour intervals |
-
-Power consumption:
-- Normal mode: ~80-100mA (all sensors + WiFi off)
-- PowerSave mode: ~20-30mA (reduced sensor load)
-- Deep sleep: ~10µA (ESP32-S3 ultra-low-power mode)
-
-### 4. Local Data Storage
-
-- **Filesystem**: SPIFFS on 16MB Flash
-- **Format**: MSLG (Multi-Sensor Log) with CRC32 integrity
-- **Node ID**: MAC-based unique identifier (AA:BB:CC:DD:EE:FF)
-- **Storage Management**: Auto-cleanup when >95% full (removes oldest data)
-
-### 5. BLE GATT Service
-
-Authenticated access (passkey: 123456) via custom service UUID `12340000-1234-1234-1234-123456789abc`:
-
-#### Characteristics:
-
-1. **Time Sync** (Write, UUID: `12340001-...`):
-   - Write 4-byte Unix timestamp for clock synchronization
-   
-2. **Data Request** (Read, UUID: `12340002-...`):
-   - Returns file size and data summary
-   
-3. **Node Info** (Read, UUID: `12340003-...`):
-   - Returns node ID and storage usage
-   - Format: `"ID:AA:BB:CC:DD:EE:FF,Used:12345,Total:16000000"`
-
-4. **Config Update** (Write, UUID: `12340004-...`):
-   - Runtime configuration updates
-   - Format: `key=value`
-   - Examples:
-     ```
-     audio_interval_ms=300000    # Set mic sampling to 5 minutes
-     inmp441_enabled=0           # Disable microphone
-     env_sensor_interval_ms=120000  # Set env sensors to 2 minutes
-     ```
-
-## User Configuration
-
-### Method 1: NVS Configuration (Persistent)
-
-Edit configuration via BLE or modify defaults in [sensor_config.c](components/sensors/src/sensor_config.c):
-
-```c
-sensor_config_t config = {
-    .inmp441_enabled = true,
-    .audio_interval_ms = 300000,  // 5 minutes
-    .audio_sample_rate = 16000,
-    .audio_duration_ms = 1000,    // 1 second clips
-    
-    .env_sensor_interval_ms = 60000,   // 1 minute
-    .gas_sensor_interval_ms = 60000,
-    .mag_sensor_interval_ms = 60000,
-    .power_sensor_interval_ms = 60000,
-    
-    // Trust filtering thresholds
-    .temp_min_c = -40.0f,
-    .temp_max_c = 85.0f,
-    .humidity_min_pct = 0.0f,
-    .humidity_max_pct = 100.0f,
-    .pressure_min_hpa = 300.0f,
-    .pressure_max_hpa = 1100.0f,
-};
-
-sensor_config_save(&config);
+```bash
+python ../tools/device_manager.py build
+python ../tools/device_manager.py list-ports
+python ../tools/device_manager.py flash-all
+python ../tools/device_manager.py monitor-all
+python ../tools/device_manager.py optimize --port /dev/ttyUSB0 audio_interval_ms=300000
 ```
 
-### Method 2: Runtime BLE Updates (from Data Mule/Drone)
+### Cluster Verification
 
-Use a BLE client to write to the Config Update characteristic:
-
-**Python Example** (using `bleak`):
-```python
-import asyncio
-from bleak import BleakClient
-
-CONFIG_CHAR_UUID = "12340004-1234-1234-1234-123456789abc"
-
-async def update_config():
-    async with BleakClient("AA:BB:CC:DD:EE:FF") as client:
-        # Disable microphone to save power
-        await client.write_gatt_char(CONFIG_CHAR_UUID, b"inmp441_enabled=0")
-        
-        # Change sampling intervals
-        await client.write_gatt_char(CONFIG_CHAR_UUID, b"audio_interval_ms=600000")
-        await client.write_gatt_char(CONFIG_CHAR_UUID, b"env_sensor_interval_ms=120000")
-
-asyncio.run(update_config())
+```bash
+python check_cluster.py          # Monitor all nodes, verify election
+python get_status.py              # Quick cluster status
+python get_cluster_full_info.py   # Detailed info dump
 ```
 
-**nRF Connect Example**:
-1. Connect to MS Node
-2. Enter passkey: `123456`
-3. Navigate to Config Update characteristic (`12340004-...`)
-4. Write ASCII string: `audio_interval_ms=300000`
-5. Configuration updates immediately and persists to NVS
+---
 
-### Configurable Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `bme280_enabled` | true | Enable BME280 sensor |
-| `aht21_enabled` | true | Enable AHT21 sensor |
-| `ens160_enabled` | true | Enable ENS160 gas sensor |
-| `gy271_enabled` | true | Enable magnetometer |
-| `ina219_enabled` | true | Enable power monitor |
-| `inmp441_enabled` | false | Enable microphone (1.4mA @ 16kHz) |
-| `env_sensor_interval_ms` | 60000 | Env sensor sampling interval |
-| `gas_sensor_interval_ms` | 60000 | Gas sensor sampling interval |
-| `mag_sensor_interval_ms` | 60000 | Magnetometer sampling interval |
-| `power_sensor_interval_ms` | 60000 | Power monitor sampling interval |
-| `audio_interval_ms` | 300000 | Microphone sampling interval |
-| `audio_sample_rate` | 16000 | Microphone sample rate (Hz) |
-| `audio_duration_ms` | 1000 | Audio capture duration |
-
-## Modularity and Extensibility
-
-### Adding a New Sensor
-
-The system is designed for easy sensor integration. Follow this example to add a soil moisture sensor:
-
-#### 1. Create Sensor Component
-
-**`components/sensors/include/soil_moisture_sensor.h`**:
-```c
-#pragma once
-#include "esp_err.h"
-#include <stdint.h>
-
-typedef struct {
-    float moisture_pct;
-    uint16_t raw_value;
-    bool valid;
-} soil_moisture_reading_t;
-
-esp_err_t soil_moisture_init(void);
-esp_err_t soil_moisture_read(soil_moisture_reading_t *reading);
-```
-
-**`components/sensors/src/soil_moisture_sensor.c`**:
-```c
-#include "soil_moisture_sensor.h"
-#include "i2c_bus.h"
-#include "esp_log.h"
-
-#define SOIL_MOISTURE_ADDR 0x20  // Example I2C address
-
-esp_err_t soil_moisture_init(void) {
-    // Initialize sensor via I2C
-    return ms_i2c_init();
-}
-
-esp_err_t soil_moisture_read(soil_moisture_reading_t *reading) {
-    uint8_t data[2];
-    esp_err_t ret = ms_i2c_read(SOIL_MOISTURE_ADDR, 0x00, data, 2);
-    
-    if (ret == ESP_OK) {
-        reading->raw_value = (data[0] << 8) | data[1];
-        reading->moisture_pct = (reading->raw_value / 65535.0f) * 100.0f;
-        reading->valid = true;
-    } else {
-        reading->valid = false;
-    }
-    
-    return ret;
-}
-```
-
-#### 2. Update Configuration
-
-Add to `sensor_config.h`:
-```c
-typedef struct {
-    // ... existing fields ...
-    bool soil_moisture_enabled;
-    uint32_t soil_moisture_interval_ms;
-} sensor_config_t;
-```
-
-Add to `sensor_config.c` defaults:
-```c
-.soil_moisture_enabled = true,
-.soil_moisture_interval_ms = 60000,
-```
-
-#### 3. Integrate into Main Loop
-
-Update `ms_node.c`:
-```c
-#include "soil_moisture_sensor.h"
-
-// In app_main():
-ret = soil_moisture_init();
-if (ret != ESP_OK) ESP_LOGW(TAG, "Soil moisture init skipped: %s", esp_err_to_name(ret));
-
-// In main loop:
-soil_moisture_reading_t soil = {0};
-bool ok_soil = (soil_moisture_read(&soil) == ESP_OK && soil.valid);
-
-if (ok_soil) {
-    ESP_LOGI(TAG, "Soil Moisture: %.2f%%", soil.moisture_pct);
-}
-
-// Add to JSON log:
-"soil":{"moisture_pct":%.2f,"raw":%u}
-```
-
-#### 4. Update BLE Config Handler
-
-Add to `ble_gatt_service.c` config parser:
-```c
-else if (strcmp(key, "soil_moisture_enabled") == 0) {
-    cfg.soil_moisture_enabled = (atoi(value) != 0);
-}
-```
-
-### Sensor Interface Guidelines
-
-- **I²C Sensors**: Use `ms_i2c_read()` / `ms_i2c_write()` helpers from `i2c_bus.h`
-- **I²S Sensors**: Follow INMP441 pattern in `inmp441_sensor.c`
-- **SPI Sensors**: Add SPI bus initialization similar to I²C in `components/sensors/`
-- **Analog Sensors**: Use ADC like battery monitoring in `battery.c`
-
-### Component Organization
+## Project Structure
 
 ```
 ms_node/
 ├── main/
-│   ├── ms_node.c           # Main application loop
-│   ├── ble_gatt_service.c  # BLE GATT characteristics
-│   ├── ble_beacon.c        # BLE advertising
-│   └── compression_bench.c # Performance benchmarks
+│   ├── ms_node.c              # Entry point, sensor loop, seq_num management
+│   ├── state_machine.c        # STELLAR/DATA phase control, CH/Member behaviour
+│   ├── state_machine.h        # States: INIT, DISCOVER, CH, MEMBER, UAV, SLEEP
+│   ├── config.h               # All tuneable parameters (phases, weights, thresholds)
+│   ├── election.c / .h        # STELLAR election logic
+│   ├── metrics.c / .h         # Score computation, Lyapunov weights, entropy
+│   ├── neighbor_manager.c / .h # Neighbour table, stale cleanup, CH lookup
+│   ├── ble_manager.c / .h     # BLE advertising + scanning (STELLAR phase)
+│   ├── ble_beacon.c / .h      # BLE advertisement packet encoding
+│   ├── ble_gatt_service.c / .h # BLE GATT config / data characteristics
+│   ├── esp_now_manager.c / .h # ESP-NOW init/deinit, send/recv, TDMA schedule
+│   ├── auth.c / .h            # HMAC authentication for BLE packets
+│   ├── persistence.c / .h     # NVS persistence for state across reboots
+│   ├── led_manager.c / .h     # Status LED indicators
+│   └── compression_bench.c    # Compression micro-benchmark
+│
 ├── components/
-│   ├── sensors/            # Sensor drivers
-│   │   ├── include/        # Public headers
-│   │   │   ├── bme280_sensor.h
-│   │   │   ├── ens160_sensor.h
-│   │   │   ├── inmp441_sensor.h
-│   │   │   └── sensor_config.h
-│   │   └── src/            # Implementations
-│   │       ├── bme280_sensor.c
-│   │       ├── sensor_config.c
-│   │       └── i2c_bus.c   # Shared I²C interface
-│   ├── logger/             # SPIFFS data storage
-│   ├── pme/                # Power management
-│   ├── battery/            # Battery monitoring
-│   └── compression/        # Data compression (future)
-└── spiffs_data/            # Files pre-loaded to SPIFFS
+│   ├── storage_manager/       # MSLG read/write/pop, SPIFFS mount, auto-purge
+│   ├── compression/           # miniz (DEFLATE) + Huffman codecs
+│   ├── uav_client/            # WiFi STA connection, HTTP POST onboarding
+│   ├── sensors/               # BME280, AHT21, ENS160, GY-271, INA219, INMP441
+│   ├── battery/               # ADC battery monitoring
+│   ├── pme/                   # Power Management Engine (Normal/PowerSave/Critical)
+│   ├── logger/                # SPIFFS block-buffered logger
+│   └── rf_receiver/           # 433 MHz ASK/OOK receiver (UAV trigger)
+│
+├── spiffs_data/               # Files pre-loaded to SPIFFS partition
+├── docs/
+│   └── MSLG_DATA_FLOW.md     # Detailed data flow analysis & graphs
+├── sdkconfig                  # ESP-IDF project configuration
+├── sdkconfig.defaults         # Default sdkconfig overrides
+├── CMakeLists.txt             # Top-level CMake build
+├── flash_all.sh               # Multi-device flash script
+├── devices.yaml               # Serial port ↔ node mapping
+└── README.md                  # This file
 ```
 
-## Building and Flashing
+---
 
-### Prerequisites
+## Configuration Reference
 
-- ESP-IDF v5.5.1 or later
-- Python 3.8+
-- USB-to-UART driver for ESP32-S3
+### Superframe Timing (`config.h`)
 
-### Build Commands
+| Define | Default | Description |
+|--------|---------|-------------|
+| `STELLAR_PHASE_MS` | 20 000 | STELLAR (BLE) phase duration |
+| `DATA_PHASE_MS` | 20 000 | DATA (ESP-NOW) phase duration |
+| `PHASE_GUARD_MS` | 5 000 | Guard before TDMA slots begin |
+| `SLOT_DURATION_SEC` | 10 | TDMA slot per member |
+| `ELECTION_WINDOW_MS` | 10 000 | Election evaluation window |
 
-```bash
-# Configure project (first time only)
-idf.py menuconfig
+### STELLAR Weights (`config.h`)
 
-# Build firmware
-idf.py build
+| Define | Default | Description |
+|--------|---------|-------------|
+| `WEIGHT_BATTERY` | 0.30 | Battery weight in score |
+| `WEIGHT_UPTIME` | 0.20 | Uptime weight |
+| `WEIGHT_TRUST` | 0.30 | Trust weight (HMAC + reputation + PDR) |
+| `WEIGHT_LINK_QUALITY` | 0.20 | Link quality weight (RSSI + PER) |
+| `STELLAR_SCORE_EWMA_ALPHA` | 0.25 | Score smoothing factor |
+| `LYAPUNOV_ETA` | 0.05 | Weight convergence learning rate |
 
-# Flash all partitions (bootloader, app, partition table)
-idf.py -p COM3 flash
+### Neighbour & Cluster (`config.h`)
 
-# Flash only application (faster updates)
-idf.py -p COM3 app-flash
+| Define | Default | Description |
+|--------|---------|-------------|
+| `MAX_NEIGHBORS` | 10 | Max neighbour table size |
+| `MAX_CLUSTER_SIZE` | 5 | Max nodes per cluster |
+| `NEIGHBOR_TIMEOUT_MS` | 60 000 | Stale neighbour removal |
+| `CH_BEACON_TIMEOUT_MS` | 45 000 | CH loss detection timeout |
+| `CH_MISS_THRESHOLD` | 10 | Consecutive misses before re-election |
+| `CLUSTER_RADIUS_RSSI_THRESHOLD` | −85 dBm | Cluster membership RSSI floor |
 
-# Monitor serial output
-idf.py -p COM3 monitor
+### Enhanced Neighbor Management (Recent Improvements)
 
-# Flash and monitor
-idf.py -p COM3 flash monitor
-```
+| Feature | Implementation | Impact |
+|---------|---------------|--------|
+| **Extended Mutex Timeouts** | 100ms → 500ms (5x increase) | Race condition mitigation |
+| **ESP-NOW Peer Registration** | Validate before table updates | Robust peer management |
+| **Post-Addition Verification** | Confirm neighbor actually added | Table consistency assurance |
+| **Comprehensive Debug Logging** | Full operation tracing | Enhanced troubleshooting |
+| **Clean State Initialization** | memset for neighbor structures | Reliable state management |
+| **Table Status Monitoring** | Debug dump on capacity issues | Operational transparency |
 
-### Device management (optimize, monitor, reflash)
+### Storage (`storage_manager.c`)
 
-Use the **device manager** to build, flash, monitor, and push config to one or all nodes from a single place. Edit `devices.yaml` with your serial ports (copy from `devices.example.yaml` if needed).
+| Define | Default | Description |
+|--------|---------|-------------|
+| `COMPRESSION_MIN_BYTES` | 1 024 | Min payload size for compression |
+| `COMPRESSION_LEVEL` | 3 | miniz DEFLATE level |
+| `SPIFFS_PURGE_THRESHOLD_PCT` | 90 | Auto-purge when SPIFFS ≥ this % |
 
-```bash
-# From repo: esp_project/tools/ or esp_project/ms_node/
-python ../tools/device_manager.py build
-python ../tools/device_manager.py list-ports          # List USB serial ports
-python ../tools/device_manager.py list-devices        # Show devices.yaml
-python ../tools/device_manager.py flash --name Node1  # Flash one device
-python ../tools/device_manager.py flash-all           # Flash all devices
-python ../tools/device_manager.py monitor --name Node1
-python ../tools/device_manager.py monitor-all         # Monitor all (parallel)
-# Push config over serial (same keys as BLE Config Update)
-python ../tools/device_manager.py optimize --port /dev/tty.usbmodem123 audio_interval_ms=300000 inmp441_enabled=0
-```
+### ESP-NOW (`config.h`)
 
-**Serial CONFIG:** When a device is connected via USB, you can also send config from the serial monitor: type `CONFIG key=value` (e.g. `CONFIG audio_interval_ms=300000`). The device applies and saves to NVS; the main loop reloads config periodically.
+| Define | Default | Description |
+|--------|---------|-------------|
+| `ESP_NOW_CHANNEL` | 1 | WiFi channel for ESP-NOW |
+| `ESP_NOW_PMK` | `"pmk1234567890123"` | Primary Master Key |
+| `ESP_NOW_LMK` | `"lmk1234567890123"` | Local Master Key |
 
-**Cluster check:** Run `python check_cluster.py` to monitor all nodes and verify discovery/election (uses `devices.yaml`).
+### ESP-NOW Communication Reliability (Recent Improvements)
 
-### Configuration
+| Feature | Implementation | Impact |
+|---------|---------------|--------|
+| **Radio Coexistence** | BLE scanning DISABLED during DATA phase | <10% → >90% success rate |
+| **Temporal Separation** | Phase-aware radio priority management | Eliminated MAC conflicts |
+| **Semaphore Protection** | Prevent concurrent send operations | MAC layer protection |
+| **Callback Confirmation** | MAC-layer ACK verification | Reliable delivery confirmation |
+| **Store-First Pattern** | Save locally before transmission | Fault tolerance, no data loss |
+| **Burst Drain Optimization** | Batch MSLG pop operations | 24x speedup (900ms for 24 chunks) |
+| **Time Budget Management** | Automatic requeue on slot overrun | Predictable TDMA timing |
 
-Key `sdkconfig` settings:
-- `CONFIG_BT_BLE_SMP_ENABLE=y` - BLE security/pairing
-- `CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y` - 16MB flash
-- `CONFIG_SPIRAM_MODE_OCT=y` - Octal PSRAM mode
-- `CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y` - 240MHz clock
-
-## Testing and Validation
-
-### Sensor Accuracy Tests
-
-**BME280**: Verify against reference thermometer and weather station
-```
-Expected: ±1°C temperature, ±3% humidity, ±1 hPa pressure
-```
-
-**ENS160**: Expose to known VOC source (e.g., alcohol swab)
-```
-Expected: TVOC rises from ~0-50 ppb to >200 ppb
-Expected: eCO₂ rises from ~400 ppm baseline
-```
-
-**GY-271**: Move magnet near sensor
-```
-Expected: Magnetic field changes >50 µT
-```
-
-**INMP441**: Clap or play 1kHz tone
-```
-Expected: RMS amplitude increases from ~0.01 to >0.05
-Expected: No clipping (peak < 0.9)
-```
-
-### Storage Validation
-
-Check SPIFFS contents:
-```bash
-idf.py -p COM3 monitor
-
-# In monitor, trigger flush and check logs
-# Look for: "MSLG" block, CRC32 validation
-```
-
-### BLE Testing
-
-**nRF Connect App**:
-1. Scan for "MS_Node_AABBCC"
-2. Connect and authenticate (passkey: 123456)
-3. Read Node Info characteristic
-4. Write config update: `inmp441_enabled=1`
-5. Read logs to verify change
-
-### Power Profiling
-
-Measure current with multimeter on BAT+ line:
-- Normal mode: 80-100mA (all sensors active)
-- PowerSave mode: 20-30mA (reduced sensors)
-- Deep sleep: <20µA (timer wakeup only)
-
-## Safety and Environmental Considerations
-
-- **Wildlife Safety**: Microphone is passive (no ultrasonic emissions)
-- **Waterproofing**: Recommend IP67 enclosure for outdoor deployment
-- **Temperature Range**: Operational -20°C to +60°C (BME280 limit)
-- **Battery Chemistry**: Use 18650 Li-ion with protection circuit
-- **Mounting**: Secure magnetometer away from metal objects
+---
 
 ## Troubleshooting
 
-### Issue: I²C sensors timeout
+### MSLG chunk count stuck / not growing
 
-**Cause**: Missing pull-up resistors or incorrect wiring
-**Solution**: Add 4.7kΩ pull-ups on SDA/SCL to 3.3V, check connections
+- **Cause:** `seq_num` was not incrementing → dedup rejected all writes.
+- **Fix:** `seq_num` now increments every 2 s main loop (not gated by 60 s sensor interval).
 
-### Issue: Microphone returns all zeros
+### MSLG never draining on members
 
-**Cause**: Not connected or incorrect I²S pins
-**Solution**: Verify GPIO5/6/7 wiring, check L/R pin grounded, add delay after init
+- **Cause:** Drain code was nested inside `prepare_upload()` which needs `data.txt`, but all data goes to `data.lz`.
+- **Fix:** MSLG burst drain now runs independently of the plain-text queue.
 
-### Issue: Storage full warning
+### BLE hex dump spam in logs
 
-**Cause**: >90% SPIFFS usage
-**Solution**: BLE retrieve and delete data, or increase `LOGGER_MAX_SIZE` in config
+- **Cause:** Non-Espressif BLE advertisements were dumped as raw hex.
+- **Fix:** Removed hex dump; only Espressif-tagged packets are processed.
 
-### Issue: Battery percentage incorrect
+### Phase boundary log shows wrong BLE state
 
-**Cause**: Wrong voltage divider or ADC calibration
-**Solution**: Measure BAT_SENSE voltage, adjust R1/R2 values in `battery_cfg_t`
+- **Cause:** Log was printed before BLE stop/start completed.
+- **Fix:** Phase boundary log now prints after BLE transition, includes Role (CH / MEMBER).
 
-### Issue: BLE connection fails
+### SPIFFS full — no more writes
 
-**Cause**: Passkey mismatch or SMP disabled
-**Solution**: Verify `CONFIG_BT_BLE_SMP_ENABLE=y` in sdkconfig, use passkey 123456
+- **Cause:** CH accumulates data from all nodes without UAV offload.
+- **Fix:** Auto-purge at 90% capacity deletes all files and retries the write. See [SPIFFS Auto-Purge](#spiffs-auto-purge).
 
-## Data Retrieval Workflow
+### WiFi connection fails during UAV onboarding
 
-### Using Python Log Parser
+- **Cause:** Old polling-based `wifi_join()` was unreliable.
+- **Fix:** Rewritten with event-driven handler, EventGroup, proper retry logic in `uav_client.c`.
 
-1. **Download log file from ESP32:**
-   - Connect via BLE GATT (future: use chunked file transfer)
-   - OR access SPIFFS directly via USB serial
+### Build: stack overflow in state machine task
 
-2. **Parse binary log with CRC32 verification:**
-   ```bash
-   python tools/log_parser.py /path/to/msn.log
-   ```
+- **Cause:** Compression + decompression buffers on stack.
+- **Fix:** `STATE_MACHINE_TASK_STACK_SIZE` increased to 12 288. Compression buffers allocated on heap / PSRAM.
 
-3. **View sensor data as JSON:**
-   ```bash
-   python tools/log_parser.py msn.log --json
-   ```
-
-4. **Output:**
-   ```
-   Chunk 1: MINIZ-3 | 2048 bytes | CRC32=0x1A2B3C4D ✓ PASS | Node: 10:20:BA:4D:F0:3C | Time: 2026-01-04T12:34:56
-           Compressed: 512 bytes (25.0%)
-   Chunk 2: RAW | 1024 bytes | CRC32=0xABCDEF12 ✓ PASS | Node: 10:20:BA:4D:F0:3C | Time: 2026-01-04T12:35:00
-   
-   === Summary ===
-   Total chunks: 2
-   Total raw data: 3072 bytes
-   Total compressed: 512 bytes (16.7%)
-   CRC32 validation: 2/2 PASS
-   ```
-
-**Data Integrity:**
-- ✅ **PASS**: CRC32 matches, data is uncorrupted
-- ❌ **CORRUPTED**: CRC32 mismatch, flash memory error or transmission corruption
-
-### BLE Data Download (Current Status)
-
-**Implemented:**
-- BLE beacon for proximity detection
-- GATT authentication and configuration
-- File size reporting
-
-**Not Yet Implemented:**
-- Chunked file transfer over BLE
-- Large dataset streaming
-
-**Workaround:** Access SPIFFS via USB serial monitor or ESP-IDF partition tools
-
-## Adding a New Sensor - Step-by-Step Guide
-
-### Method 1: Compile-Time Configuration (Permanent Addition)
-
-#### Step 1: Create Sensor Driver
-
-Create `components/sensors/src/newsensor.c`:
-
-```c
-#include "newsensor.h"
-#include "esp_log.h"
-#include "driver/i2c_master.h"
-
-static const char *TAG = "newsensor";
-static i2c_master_dev_handle_t s_newsensor_handle = NULL;
-
-esp_err_t newsensor_init(void) {
-    // Initialize I2C device
-    extern i2c_master_bus_handle_t i2c_get_bus_handle(void);
-    i2c_master_bus_handle_t bus = i2c_get_bus_handle();
-    
-    i2c_device_config_t dev_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = 0x48,  // Your sensor's I2C address
-        .scl_speed_hz = 100000,
-    };
-    
-    esp_err_t ret = i2c_master_bus_add_device(bus, &dev_cfg, &s_newsensor_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to add device: %s", esp_err_to_name(ret));
-        return ret;
-    }
-    
-    ESP_LOGI(TAG, "New sensor initialized");
-    return ESP_OK;
-}
-
-esp_err_t newsensor_read(newsensor_reading_t *reading) {
-    if (!s_newsensor_handle) return ESP_ERR_INVALID_STATE;
-    
-    // Implement sensor reading logic here
-    uint8_t data[4];
-    esp_err_t ret = i2c_master_receive(s_newsensor_handle, data, sizeof(data), 1000);
-    if (ret != ESP_OK) return ret;
-    
-    // Parse data into reading structure
-    reading->value = (data[0] << 8) | data[1];
-    reading->valid = true;
-    
-    return ESP_OK;
-}
-```
-
-Create header `components/sensors/include/newsensor.h`:
-
-```c
-#pragma once
-#include "esp_err.h"
-#include <stdbool.h>
-
-typedef struct {
-    float value;
-    bool valid;
-} newsensor_reading_t;
-
-esp_err_t newsensor_init(void);
-esp_err_t newsensor_read(newsensor_reading_t *reading);
-```
-
-#### Step 2: Add to Configuration
-
-Edit `components/sensors/include/sensor_config.h`:
-
-```c
-typedef struct {
-    // ... existing fields ...
-    bool newsensor_enabled;  // ADD THIS
-    uint32_t newsensor_interval_ms;  // ADD THIS
-    
-    // ... rest of struct ...
-} sensor_config_t;
-```
-
-Edit `components/sensors/src/sensor_config.c`:
-
-```c
-sensor_config_t sensor_config_get_default(void) {
-    sensor_config_t cfg = {
-        // ... existing defaults ...
-        .newsensor_enabled = true,          // ADD THIS
-        .newsensor_interval_ms = 60000,     // ADD THIS (60 seconds)
-    };
-    return cfg;
-}
-
-esp_err_t sensor_config_load(sensor_config_t *config) {
-    // ... existing NVS reads ...
-    LOAD_BOOL("newsensor_en", newsensor_enabled);      // ADD THIS
-    LOAD_U32("newsensor_int", newsensor_interval_ms);  // ADD THIS
-    
-    return ESP_OK;
-}
-
-esp_err_t sensor_config_save(const sensor_config_t *config) {
-    // ... existing NVS writes ...
-    SAVE_BOOL("newsensor_en", newsensor_enabled);      // ADD THIS
-    SAVE_U32("newsensor_int", newsensor_interval_ms);  // ADD THIS
-    
-    return ESP_OK;
-}
-```
-
-#### Step 3: Add to Main Loop
-
-Edit `main/ms_node.c`:
-
-```c
-#include "newsensor.h"  // ADD THIS at top
-
-// In app_main() initialization section:
-ret = newsensor_init();
-if (ret != ESP_OK) ESP_LOGW(TAG, "New sensor init failed: %s", esp_err_to_name(ret));
-
-// Add timestamp tracking variable after existing s_last_* variables:
-static uint64_t s_last_newsensor_read_ms = 0;
-
-// In main loop, calculate interval (inside switch statement):
-uint32_t newsensor_interval_ms = 60000;  // Default or mode-dependent
-
-// Add timing check:
-bool time_for_newsensor = (now_ms - s_last_newsensor_read_ms) >= newsensor_interval_ms;
-
-// Add reading variable:
-newsensor_reading_t newsensor_data = {0};
-bool ok_newsensor = false;
-
-// Add sensor read (with mode gating if needed):
-if (do_full && time_for_newsensor && s_sensor_config.newsensor_enabled) {
-    ok_newsensor = (newsensor_read(&newsensor_data) == ESP_OK);
-    if (ok_newsensor) s_last_newsensor_read_ms = now_ms;
-}
-
-// Add logging:
-if (ok_newsensor) {
-    ESP_LOGI(TAG, "NewSensor value=%.2f", newsensor_data.value);
-}
-
-// Add to logger data structure (find logger_sensor_data_t section):
-// ... add newsensor fields to JSON output ...
-```
-
-#### Step 4: Add BLE GATT Configuration Support
-
-Edit `main/ble_gatt_service.c`:
-
-In the config update handler, add:
-
-```c
-else if (strcmp(key, "newsensor_enabled") == 0) {
-    cfg.newsensor_enabled = (strcmp(val, "true") == 0 || strcmp(val, "1") == 0);
-}
-else if (strcmp(key, "newsensor_interval_ms") == 0) {
-    cfg.newsensor_interval_ms = (uint32_t)atoi(val);
-}
-```
-
-#### Step 5: Update CMakeLists.txt
-
-Edit `components/sensors/CMakeLists.txt`:
-
-```cmake
-set(COMPONENT_SRCS
-    "src/sensors.c"
-    # ... existing files ...
-    "src/newsensor.c"  # ADD THIS
-)
-```
-
-#### Step 6: Build and Flash
-
-```bash
-cd ms_node
-idf.py build
-idf.py flash monitor
-```
-
-### Method 2: Runtime Configuration via BLE GATT
-
-**Prerequisites:**
-- Sensor driver already compiled into firmware
-- `newsensor_enabled` field in sensor_config_t
-
-**Steps:**
-
-1. **Connect via BLE** (e.g., using nRF Connect app):
-   - Scan for `MSN-B###-XX-AABBCC`
-   - Connect and pair (passkey: 123456)
-
-2. **Write to Config Update characteristic:**
-   ```json
-   {"newsensor_enabled": true, "newsensor_interval_ms": 30000}
-   ```
-
-3. **Verify** - node will log:
-   ```
-   I (12345) ble_gatt: Config updated: newsensor_enabled=true
-   I (12345) sensor_config: Saved to NVS
-   ```
-
-### Testing Your New Sensor
-
-1. **Check initialization:**
-   ```
-   I (1234) newsensor: New sensor initialized
-   ```
-
-2. **Verify readings appear:**
-   ```
-   I (5000) main: NewSensor value=42.50
-   ```
-
-3. **Check data logging:**
-   - Monitor SPIFFS usage increasing
-   - Parse log file with `log_parser.py`
-
-4. **Test BLE configuration:**
-   - Disable sensor: `{"newsensor_enabled": false}`
-   - Change interval: `{"newsensor_interval_ms": 120000}`
-
-## Data Retrieval Workflow
-
-1. **Ferry/Drone arrives** → BLE beacon detected
-2. **Connect** → Authenticate with passkey
-3. **Read Node Info** → Get storage usage and node ID
-4. **Read Data Request** → Retrieve file size
-5. **Stream data** → Read SPIFFS file chunks (future enhancement)
-6. **Update config** → Write to Config Update characteristic if needed
-7. **Disconnect** → Node resumes autonomous operation
-
-## Future Enhancements
-
-- [ ] Chunked BLE file transfer for large datasets
-- [ ] LoRa module for extended range communication
-- [ ] GPS module for spatial tagging
-- [ ] Camera module for visual monitoring
-- [ ] ZSTD compression for log data
-- [ ] Web-based configuration interface
-- [ ] Over-the-air (OTA) firmware updates
+---
 
 ## License
 
 This project is provided for educational and research purposes.
 
-## Support
-
-For technical questions or contributions, refer to the component-specific documentation in `components/*/README.md` or review the inline code comments.
-
 ---
 
-**Author**: Delay-Tolerant Sensor Network Team  
-**Hardware**: ESP32-S3-N16R8  
-**SDK**: ESP-IDF v5.5.1  
-**Last Updated**: January 2026
+**Team:** WSNDataFerry — Delay-Tolerant Sensor Network Research
+**Hardware:** ESP32-S3-N16R8
+**SDK:** ESP-IDF v5.3.4
+**Last Updated:** March 2026

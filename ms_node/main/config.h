@@ -40,19 +40,25 @@
 #define NEIGHBOR_TIMEOUT_MS                                                    \
   60000 // Increased to 60s to survive 20s Stellar + 20s Data phases
 #define CLUSTER_RADIUS_RSSI_THRESHOLD -85.0f
+// CRITICAL FIX: CH beacon timeout must survive the full DATA phase (20s) where
+// BLE scanning is disabled. Set to 45s to cover DATA + partial STELLAR + buffer.
+// The actual timeout check is now phase-aware (disabled during DATA phase).
 #define CH_BEACON_TIMEOUT_MS                                                   \
-  5000 // Tuned: 5s - Even faster failure detection for plots (was 10s)
+  45000 // 45s: DATA(20s) + STELLAR(20s) + 5s buffer for stability
 #define CH_MEMBER_HYSTERESIS_MS                                                \
-  4000 // Tuned: 4s hysteresis for faster re-election in plots (was 8000)
+  8000 // 8s hysteresis to prevent oscillation after beacon timeout
 #define CH_MEMBER_MISSING_CONSECUTIVE                                          \
   15 // Consecutive runs with CH missing before starting hysteresis (stability)
-// CH loss detection: state machine runs ~1s/cycle, so 5 misses ≈ 5s =
-// CH_BEACON_TIMEOUT_MS
-#define CH_MISS_THRESHOLD 5 // Consecutive missed CH beacons before re-election
+// CH loss detection during STELLAR phase only. State machine runs ~1s/cycle,
+// so 10 misses ≈ 10s to confirm CH loss (conservative to prevent false alarms).
+#define CH_MISS_THRESHOLD 10 // Consecutive missed CH beacons before re-election
 
 // STELLAR
-// When 1: allow simulated battery drain in main loop when no battery hw; when
-// 0: use dummy 100% only
+// When 1: allow simulated sensors/battery in main loop when no hardware is
+// available. Keep this enabled so the firmware produces dummy sensor values
+// when real sensors are absent. Battery simulation is disabled separately in
+// `main/ms_node.c` (we now use ADC for battery reads and do not synthesize
+// battery percentages).
 #define ENABLE_MOCK_SENSORS 1
 #define USE_STELLAR_ALGORITHM 1
 // Smooth STELLAR score to avoid re-election from brief dips (0.1 = slow, 0.3 =

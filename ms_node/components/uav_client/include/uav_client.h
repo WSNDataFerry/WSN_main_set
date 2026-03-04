@@ -5,10 +5,13 @@
 // Configuration
 #define UAV_WIFI_SSID "WSN_AP"
 #define UAV_WIFI_PASS "raspberry"
-#define UAV_SERVER_URL_ONBOARD "http://10.42.0.1:8080/onboard"
-#define UAV_SERVER_URL_DATA "http://10.42.0.1:8080/data"
-#define UAV_SERVER_URL_ACK "http://10.42.0.1:8080/ack"
+#define UAV_SERVER_PORT 8080
 #define UAV_SECRET_KEY "pi_secret_key_12345"
+
+// Dynamic URLs - will be constructed with discovered gateway IP
+extern char g_uav_server_url_onboard[64];
+extern char g_uav_server_url_data[64]; 
+extern char g_uav_server_url_ack[64];
 
 /**
  * @brief Run the UAV Client Onboarding sequence
@@ -23,3 +26,11 @@
  * @return ESP_OK on success, failure otherwise
  */
 esp_err_t uav_client_run_onboarding(void);
+
+/**
+ * @brief Cleanup UAV client resources
+ * 
+ * Call this after UAV onboarding completes (success or failure) and before
+ * reinitializing ESP-NOW. Destroys the WiFi STA netif that was created.
+ */
+void uav_client_cleanup(void);

@@ -4,6 +4,7 @@
 #include "election.h"
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "esp_now.h"
 #include "esp_now_manager.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
@@ -101,8 +102,9 @@ typedef enum {
 
 static phase_t s_current_phase = PHASE_STELLAR;
 static uint64_t s_phase_start_ms = 0;
-static bool s_schedule_sent_this_data_phase = false;
-static uint64_t s_last_ch_store_ms = 0; // Moved to file scope for debugging
+static uint64_t s_last_schedule_send_ms = 0;   // Timestamp of last TDMA schedule send
+static int      s_schedule_sends_this_phase = 0; // Count of schedule sends this DATA phase
+// s_last_ch_store_ms and s_last_mbr_store_ms removed — storage moved to main loop (ms_node.c)
 
 static void state_machine_update_phase(uint64_t now_ms) {
   // Initialize phase start on first run
@@ -245,9 +247,6 @@ void state_machine_run(void) {
   phase_t prev_phase = s_current_phase;
   state_machine_update_phase(now_ms);
   if (s_current_phase != prev_phase) {
-    ESP_LOGI(TAG, "Phase transition: %s -> %s",
-             (prev_phase == PHASE_STELLAR) ? "STELLAR" : "DATA",
-             (s_current_phase == PHASE_STELLAR) ? "STELLAR" : "DATA");
 
     if (s_current_phase == PHASE_DATA) {
       // New DATA phase: Stop BLE to clear radio for ESP-NOW
@@ -259,22 +258,64 @@ void state_machine_run(void) {
         ble_manager_stop_scanning();
       }
 
-      // Only Members stop advertising.
-      // CH must remain visible for new nodes.
-      // Candidates must advertise to win elections.
-      if (g_current_state == STATE_MEMBER) {
+      // Stop advertising for ALL roles during DATA phase.
+      // CH advertising was previously kept on for "new node visibility" but
+      // it occupies the 2.4 GHz radio, interfering with ESP-NOW schedule
+      // delivery (status=1 failures).  New nodes discover the CH during
+      // STELLAR phase; DATA phase is exclusively for ESP-NOW.
+      if (g_current_state == STATE_MEMBER || g_current_state == STATE_CH) {
         ble_manager_stop_advertising();
       }
 
       // CRITICAL FIX: Ensure radio is on ESP-NOW channel (1) after BLE hopping
       esp_wifi_set_channel(ESP_NOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
 
-      // Allow one TDMA schedule broadcast
-      s_schedule_sent_this_data_phase = false;
+      // Allow TDMA schedule broadcasts in this DATA phase
+      s_schedule_sends_this_phase = 0;
+      s_last_schedule_send_ms = 0;
     } else {
       // New STELLAR phase: Restart BLE
       ble_manager_start_advertising();
       ble_manager_start_scanning();
+    }
+
+    // ── Diagnostic: Phase boundary with radio state (AFTER transition) ──
+    bool ble_scan   = ble_manager_is_scanning();
+    bool ble_adv    = ble_manager_is_advertising();
+    int  mslg_count = storage_manager_get_mslg_chunk_count();
+    const char *role = (g_current_state == STATE_CH) ? "CH" :
+                       (g_current_state == STATE_MEMBER) ? "MEMBER" : "OTHER";
+
+    // ESP-NOW is always initialised but only usable when the radio is NOT
+    // in BLE mode.  During STELLAR the radio is on BLE → ESP-NOW is idle.
+    const bool espnow_active = (s_current_phase == PHASE_DATA);
+
+    if (s_current_phase == PHASE_DATA) {
+      ESP_LOGI(TAG, "╔═══════════════════════════════════════════════════╗");
+      ESP_LOGI(TAG, "║  STELLAR phase END  →  DATA phase START          ║");
+      ESP_LOGI(TAG, "╠═══════════════════════════════════════════════════╣");
+      ESP_LOGI(TAG, "║  Role: %-6s                                    ║", role);
+      ESP_LOGI(TAG, "║  BLE  RX (scan): %-8s  TX (adv): %-8s    ║",
+               ble_scan ? "ACTIVE" : "INACTIVE",
+               ble_adv  ? "ACTIVE" : "INACTIVE");
+      ESP_LOGI(TAG, "║  ESP-NOW RX: %-8s       TX: %-8s          ║",
+               espnow_active ? "ACTIVE" : "INACTIVE",
+               espnow_active ? "ACTIVE" : "INACTIVE");
+      ESP_LOGI(TAG, "║  MSLG chunks stored: %-5d                       ║", mslg_count);
+      ESP_LOGI(TAG, "╚═══════════════════════════════════════════════════╝");
+    } else {
+      ESP_LOGI(TAG, "╔═══════════════════════════════════════════════════╗");
+      ESP_LOGI(TAG, "║  DATA phase END  →  STELLAR phase START          ║");
+      ESP_LOGI(TAG, "╠═══════════════════════════════════════════════════╣");
+      ESP_LOGI(TAG, "║  Role: %-6s                                    ║", role);
+      ESP_LOGI(TAG, "║  BLE  RX (scan): %-8s  TX (adv): %-8s    ║",
+               ble_scan ? "ACTIVE" : "INACTIVE",
+               ble_adv  ? "ACTIVE" : "INACTIVE");
+      ESP_LOGI(TAG, "║  ESP-NOW RX: %-8s       TX: %-8s          ║",
+               espnow_active ? "ACTIVE" : "INACTIVE",
+               espnow_active ? "ACTIVE" : "INACTIVE");
+      ESP_LOGI(TAG, "║  MSLG chunks stored: %-5d                       ║", mslg_count);
+      ESP_LOGI(TAG, "╚═══════════════════════════════════════════════════╝");
     }
   }
 
@@ -397,16 +438,82 @@ void state_machine_run(void) {
   case STATE_CH:
     // Cluster Head duties
     {
+      // ─────────────────────────────────────────────────────────────────────
+      // CH ASSERTION GRACE PERIOD (Dual-CH Prevention)
+      // ─────────────────────────────────────────────────────────────────────
+      // When first becoming CH, wait a brief period while scanning to detect
+      // any conflicting CHs before fully asserting. This prevents dual-CH
+      // scenarios where two nodes both think they won the election due to
+      // incomplete neighbor information.
+      // ─────────────────────────────────────────────────────────────────────
+      static bool ch_assertion_verified = false;
+      static uint64_t ch_assertion_start = 0;
+      const uint32_t CH_ASSERTION_GRACE_MS = 3000; // 3s grace period
+
+      // Check if this is a new CH entry (state_entry_time updated on transition)
+      if (ch_assertion_start == 0 ||
+          (state_entry_time > ch_assertion_start &&
+           state_entry_time - ch_assertion_start > CH_ASSERTION_GRACE_MS)) {
+        // New CH entry - reset assertion state
+        ch_assertion_verified = false;
+        ch_assertion_start = now_ms;
+        ESP_LOGI(TAG, "CH assertion grace period started (checking for conflicts)");
+      }
+
+      // During grace period, aggressively scan for conflicting CHs
+      // BUT only during STELLAR phase — DATA phase radio belongs to ESP-NOW
+      if (s_current_phase == PHASE_STELLAR) {
+        ble_manager_start_scanning();
+        ble_manager_update_advertisement();
+      }
+
+      if (!ch_assertion_verified) {
+        if (now_ms - ch_assertion_start < CH_ASSERTION_GRACE_MS) {
+          // Still in grace period - check for conflicts
+          if (election_check_reelection_needed()) {
+            // Another better CH exists - yield immediately
+            ESP_LOGW(TAG, "CH conflict detected during assertion grace - yielding");
+            ch_assertion_verified = false;
+            ch_assertion_start = 0;
+            uint32_t other_ch = neighbor_manager_get_current_ch();
+            if (other_ch != 0) {
+              ESP_LOGI(TAG, "Yielding to existing CH %lu during assertion",
+                       other_ch);
+              g_is_ch = false;
+              transition_to_state(STATE_MEMBER);
+            } else {
+              g_is_ch = false;
+              transition_to_state(STATE_CANDIDATE);
+              election_reset_window();
+            }
+            break;
+          }
+          // Still checking - don't proceed with CH duties yet
+          break;
+        } else {
+          // Grace period ended with no conflicts
+          ch_assertion_verified = true;
+          ESP_LOGI(TAG, "CH assertion verified - no conflicts detected");
+        }
+      }
+
       // Update metrics
       // metrics_update(); // Handled by metrics_task
 
       // Keep scanning so we can detect other CH beacons and resolve conflicts
       // (CH state can be reached from DISCOVER where scanning may have been
       // stopped).
-      ble_manager_start_scanning();
+      // CRITICAL: Only during STELLAR phase! During DATA phase the radio must
+      // stay on the WiFi channel for ESP-NOW.  This was the root cause of
+      // ble_scan=1 on ALL CH schedule sends → members couldn't ACK data.
+      if (s_current_phase == PHASE_STELLAR) {
+        ble_manager_start_scanning();
+      }
 
-      // Update CH announcement
-      ble_manager_update_advertisement();
+      // Update CH announcement — only during STELLAR phase
+      if (s_current_phase == PHASE_STELLAR) {
+        ble_manager_update_advertisement();
+      }
 
       // Check if re-election / yielding is needed.
       // During DATA phase we keep the CH fixed *unless* there is a CH conflict
@@ -463,93 +570,108 @@ void state_machine_run(void) {
       }
 
       // ---------------------------------------------------------
-      // TIME SLICING SCHEDULER (Novelty) - runs once per DATA phase
+      // TIME SLICING SCHEDULER (Novelty) - resends every 5s during DATA
       // ---------------------------------------------------------
-      if (s_current_phase == PHASE_DATA && !s_schedule_sent_this_data_phase) {
-        neighbor_entry_t neighbors[MAX_NEIGHBORS];
-        size_t count = neighbor_manager_get_all(neighbors, MAX_NEIGHBORS);
+      // Phase desync fix: Members may still be in STELLAR (BLE scanning)
+      // when the CH enters DATA and sends the first schedule.  By re-sending
+      // every 5 s we dramatically increase the probability that at least one
+      // schedule arrives while the member's radio is on the WiFi channel.
+      // The epoch is recalculated each time so members always get a fresh,
+      // correct slot window relative to "now".
+      // ---------------------------------------------------------
+      {
+        uint64_t sched_now_ms = esp_timer_get_time() / 1000;
+        bool should_send_sched = (s_current_phase == PHASE_DATA) &&
+            (s_schedule_sends_this_phase == 0 ||
+             (sched_now_ms - s_last_schedule_send_ms) >= 5000);
 
-        if (count > 0) {
-          // Sort by Priority (Githmi-style: P = Link + (100-Bat))
-          qsort(neighbors, count, sizeof(neighbor_entry_t), compare_priority);
+        if (should_send_sched) {
+          neighbor_entry_t neighbors[MAX_NEIGHBORS];
+          size_t count = neighbor_manager_get_all(neighbors, MAX_NEIGHBORS);
 
-          // TDMA epoch: start after a guard inside DATA phase
-          int64_t epoch_us =
-              esp_timer_get_time() + ((int64_t)PHASE_GUARD_MS * 1000LL);
-
-          // DYNAMIC SLOT CALCULATION (Phase 24)
-          // Available time for slots = Data Phase Length - Guard Time
-          uint32_t available_ms = DATA_PHASE_MS - PHASE_GUARD_MS;
-          // Calculate slot size per node (in ms)
-          uint32_t slot_ms = available_ms / count;
-
-          // Safety: Ensure minimum slot time to prevent fragmentation
-          if (slot_ms < 2000) {
-            slot_ms = 2000;
-            ESP_LOGW(TAG, "Slot time clamped to minimum 2s");
-          }
-
-          uint8_t slot_sec = slot_ms / 1000;
-
+          ESP_LOGI(TAG, "[DEBUG] TDMA Schedule: Found %zu neighbors for scheduling", count);
           for (size_t i = 0; i < count; i++) {
-            schedule_msg_t sched;
-            sched.epoch_us = epoch_us;
-            sched.slot_index = i;
-            sched.slot_duration_sec = slot_sec; // Dynamic duration
-            sched.magic = ESP_NOW_MAGIC_SCHEDULE;
-
-            // Broadcast to each (using Unicast for reliability)
-            esp_now_manager_send_data(neighbors[i].mac_addr, (uint8_t *)&sched,
-                                      sizeof(sched));
-            ESP_LOGI(TAG, "SCHED: Assigned Slot %d to Node %lu (Score %.2f)",
-                     (int)i, neighbors[i].node_id, neighbors[i].score);
+            ESP_LOGI(TAG, "[DEBUG] TDMA Neighbor[%zu]: node_id=%lu, verified=%d, in_cluster=%d, is_ch=%d", 
+                     i, neighbors[i].node_id, neighbors[i].verified, 
+                     neighbor_manager_is_in_cluster(&neighbors[i]), neighbors[i].is_ch);
           }
 
-          s_schedule_sent_this_data_phase = true;
+          if (count > 0) {
+            // Sort by Priority (Githmi-style: P = Link + (100-Bat))
+            qsort(neighbors, count, sizeof(neighbor_entry_t), compare_priority);
+
+            // TDMA epoch: start after a guard from NOW
+            int64_t epoch_us =
+                esp_timer_get_time() + ((int64_t)PHASE_GUARD_MS * 1000LL);
+
+            // DYNAMIC SLOT CALCULATION (Phase 24)
+            uint32_t available_ms = DATA_PHASE_MS - PHASE_GUARD_MS;
+            uint32_t slot_ms = available_ms / count;
+            if (slot_ms < 2000) {
+              slot_ms = 2000;
+              ESP_LOGW(TAG, "Slot time clamped to minimum 2s");
+            }
+            uint8_t slot_sec = slot_ms / 1000;
+
+            for (size_t i = 0; i < count; i++) {
+              schedule_msg_t sched;
+              sched.epoch_us = epoch_us;
+              sched.slot_index = i;
+              sched.slot_duration_sec = slot_sec;
+              sched.magic = ESP_NOW_MAGIC_SCHEDULE;
+              sched.target_node_id = neighbors[i].node_id;
+
+              // ── Unicast (needs MAC ACK) ──
+              esp_err_t uc_ret;
+              if (s_schedule_sends_this_phase == 0) {
+                uc_ret = esp_now_manager_send_data(neighbors[i].mac_addr,
+                                                   (uint8_t *)&sched, sizeof(sched));
+              } else {
+                uc_ret = esp_now_manager_send_data_fast(neighbors[i].mac_addr,
+                                                        (uint8_t *)&sched, sizeof(sched));
+              }
+
+              // ── Broadcast backup (no ACK needed — survives radio contention) ──
+              // If unicast failed (member radio busy) the broadcast has a
+              // second chance of being received.  target_node_id lets each
+              // member filter to its own slot.
+              if (uc_ret != ESP_OK) {
+                static const uint8_t BCAST[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+                if (!esp_now_is_peer_exist(BCAST)) {
+                  esp_now_peer_info_t bp = {0};
+                  memcpy(bp.peer_addr, BCAST, 6);
+                  bp.channel = ESP_NOW_CHANNEL;
+                  bp.ifidx   = WIFI_IF_STA;
+                  bp.encrypt = false;
+                  esp_now_add_peer(&bp);
+                }
+                esp_now_send(BCAST, (uint8_t *)&sched, sizeof(sched));
+                ESP_LOGW(TAG, "SCHED: Unicast FAIL for node_%lu — sent broadcast backup",
+                         neighbors[i].node_id);
+              }
+
+              ESP_LOGI(TAG, "SCHED: Assigned Slot %d to Node %lu (Score %.2f) [tx#%d]",
+                       (int)i, neighbors[i].node_id, neighbors[i].score,
+                       s_schedule_sends_this_phase + 1);
+            }
+
+            s_schedule_sends_this_phase++;
+            s_last_schedule_send_ms = sched_now_ms;
+          }
         }
       }
 
       // ---------------------------------------------------------
-      // CH SELF-DATA STORAGE (New Requirement)
+      // CH SELF-DATA STORAGE — MOVED TO MAIN LOOP (ms_node.c)
       // ---------------------------------------------------------
-      // Log data at same rate as members (every 5s or as configured)
-      if (s_current_phase == PHASE_DATA &&
-          (now_ms - s_last_ch_store_ms) >= 5000) {
-        sensor_payload_t payload;
-        metrics_get_sensor_data(&payload);
-
-        // Ensure nonzero timestamp
-        if (payload.timestamp_ms == 0) {
-          payload.timestamp_ms = (uint64_t)(esp_timer_get_time() / 1000ULL);
-          payload.node_id = g_node_id;
-        }
-
-        // Format as JSON (Full sensor data)
-        char json_payload[384];
-        snprintf(
-            json_payload, sizeof(json_payload),
-            "{\"id\":%lu,\"seq\":%lu,\"mac\":\"%02x%02x%02x%02x%02x%02x\","
-            "\"ts\":%llu,"
-            "\"t\":%.1f,\"h\":%.1f,\"p\":%lu,\"q\":%d,\"eco2\":%d,\"tvoc\":%d,"
-            "\"mx\":%.2f,\"my\":%.2f,\"mz\":%.2f,\"a\":%.3f}",
-            payload.node_id, payload.seq_num, payload.mac_addr[0],
-            payload.mac_addr[1], payload.mac_addr[2], payload.mac_addr[3],
-            payload.mac_addr[4], payload.mac_addr[5], payload.timestamp_ms,
-            payload.temp_c, payload.hum_pct,
-            (unsigned long)payload.pressure_hpa, payload.aqi, payload.eco2_ppm,
-            payload.tvoc_ppb, payload.mag_x, payload.mag_y, payload.mag_z,
-            payload.audio_rms);
-
-        // Write to storage (MSLG format, compression when payload >= 1KB)
-        esp_err_t ret = storage_manager_write_compressed(json_payload, true);
-        if (ret == ESP_OK) {
-          ESP_LOGI(TAG, "CH Stored own sensor data: seq=%lu", payload.seq_num);
-          s_last_ch_store_ms = now_ms;
-        } else {
-          ESP_LOGE(TAG, "CH Failed to store own data: %s",
-                   esp_err_to_name(ret));
-        }
-      }
+      // Previously stored here every 5s, but during heavy MBR burst
+      // receives the SPIFFS mutex contention could delay this 100ms
+      // task by 10-15s, causing seq gaps (e.g. seq 43-45 missing).
+      //
+      // Now: the main loop (ms_node.c) stores directly to MSLG in
+      // the SAME iteration that increments seq_num.  This guarantees
+      // zero seq gaps for CH data regardless of ESP-NOW receive load.
+      // ---------------------------------------------------------
     }
     break;
 
@@ -563,14 +685,42 @@ void state_machine_run(void) {
       // quiet for ESP-NOW transmission; unconditionally re-starting scanning
       // here was the primary cause of ESP-NOW send failures (BLE scan window
       // occupied the radio during esp_now_send, preventing MAC-layer ACK).
+      //
+      // BLE PRE-GUARD (3 s): Stop BLE just before STELLAR ends so the radio
+      // is on the WiFi channel when the DATA phase boundary fires.  This is
+      // NOT meant to cover the full phase-desync window — the CH's schedule
+      // resend every 5 s + broadcast backup handles that.  The 3 s guard
+      // ensures the very first schedule of each DATA phase is receivable.
+      // STELLAR still gets 17 s for election/neighbor discovery.
       if (s_current_phase == PHASE_STELLAR) {
-        ble_manager_start_scanning();
+        uint64_t elapsed_in_frame = now_ms - s_phase_start_ms;
+        const uint64_t BLE_PRE_GUARD_MS = 3000;
+        static bool s_pre_guard_active = false;
+
+        if (elapsed_in_frame >= (STELLAR_PHASE_MS - BLE_PRE_GUARD_MS)) {
+          // Last 3 s of STELLAR: stop BLE to free radio for ESP-NOW
+          if (!s_pre_guard_active) {
+            ble_manager_stop_scanning();
+            ble_manager_stop_advertising();
+            // Pin radio to ESP-NOW channel
+            esp_wifi_set_channel(ESP_NOW_CHANNEL, WIFI_SECOND_CHAN_NONE);
+            ESP_LOGI(TAG, "BLE PRE-GUARD: Stopped BLE %.1fs before DATA phase",
+                     (STELLAR_PHASE_MS - elapsed_in_frame) / 1000.0);
+            s_pre_guard_active = true;
+          }
+        } else {
+          // Normal STELLAR: scan for neighbors
+          s_pre_guard_active = false;
+          ble_manager_start_scanning();
+        }
       }
 
       // Ensure BLE advertising is active (for broadcasting our metrics)
       // Note: member_ble_started is file-scope (see top of file) so it resets
       // correctly on every MEMBER re-entry via transition_to_state().
-      if (!member_ble_started) {
+      // CRITICAL: Only start advertising during STELLAR phase.  Starting it
+      // during DATA would re-enable BLE and interfere with ESP-NOW.
+      if (!member_ble_started && s_current_phase == PHASE_STELLAR) {
         if (ble_manager_is_ready()) {
           ble_manager_start_advertising();
           member_ble_started = true;
@@ -581,30 +731,55 @@ void state_machine_run(void) {
         }
       }
 
-      // Check if CH is still valid (with grace period to tolerate transient
-      // loss). CH_MISS_THRESHOLD is defined in config.h and matches
-      // CH_BEACON_TIMEOUT_MS (5 misses × ~1s/cycle ≈ 5s).
+      // ─────────────────────────────────────────────────────────────────────
+      // PHASE-AWARE CH BEACON CHECK (Stability Fix)
+      // ─────────────────────────────────────────────────────────────────────
+      // During DATA phase, BLE scanning is OFF so we CANNOT receive CH beacons.
+      // Skip beacon timeout check during DATA phase to prevent false positives.
+      // We only check CH validity during STELLAR phase when BLE is active.
+      // The CH is cached (s_cached_ch_id) at STELLAR→DATA transition.
+      // ─────────────────────────────────────────────────────────────────────
       static int ch_miss_count = 0;
 
-      uint32_t current_ch = neighbor_manager_get_current_ch();
-      if (current_ch == 0) {
-        ch_miss_count++;
-        if (ch_miss_count >= CH_MISS_THRESHOLD) {
-          ESP_LOGW(
-              TAG,
-              "CH lost (confirmed after %d misses), returning to candidate",
-              ch_miss_count);
-          ch_miss_count = 0;
-          member_ble_started = false; // Reset flag
-          transition_to_state(STATE_CANDIDATE);
-          election_reset_window();
-          break;
+      if (s_current_phase == PHASE_STELLAR) {
+        // STELLAR phase: BLE is on, we can receive beacons - check CH validity
+        uint32_t current_ch = neighbor_manager_get_current_ch();
+        if (current_ch == 0) {
+          ch_miss_count++;
+          if (ch_miss_count >= CH_MISS_THRESHOLD) {
+            ESP_LOGW(
+                TAG,
+                "CH lost (confirmed after %d misses during STELLAR), "
+                "returning to candidate",
+                ch_miss_count);
+            ch_miss_count = 0;
+            member_ble_started = false; // Reset flag
+            transition_to_state(STATE_CANDIDATE);
+            election_reset_window();
+            break;
+          } else {
+            ESP_LOGW(TAG, "CH beacon missed (%d/%d) during STELLAR, waiting...",
+                     ch_miss_count, CH_MISS_THRESHOLD);
+          }
         } else {
-          ESP_LOGW(TAG, "CH beacon missed (%d/%d), waiting...", ch_miss_count,
-                   CH_MISS_THRESHOLD);
+          // Valid CH beacon received - reset miss counter
+          if (ch_miss_count > 0) {
+            ESP_LOGI(TAG, "CH beacon received (node_%lu), miss counter reset",
+                     current_ch);
+          }
+          ch_miss_count = 0;
         }
       } else {
-        ch_miss_count = 0; // Reset on valid beacon
+        // DATA phase: BLE is off, skip beacon check (rely on cached CH)
+        // Only log once per DATA phase entry to avoid spam
+        static phase_t last_logged_phase = PHASE_STELLAR;
+        if (last_logged_phase != PHASE_DATA) {
+          ESP_LOGD(TAG, "DATA phase: CH beacon check suspended (BLE off)");
+          last_logged_phase = PHASE_DATA;
+        }
+        if (s_current_phase == PHASE_STELLAR) {
+          last_logged_phase = PHASE_STELLAR;
+        }
       }
 
       // Update advertisement (as member) - ONLY IN STELLAR PHASE
@@ -640,6 +815,13 @@ void state_machine_run(void) {
       // phase even after BLE stops and the CH beacon timeout fires.
       static uint8_t s_cached_ch_mac[6] = {0};
       static uint32_t s_cached_ch_id = 0;
+
+      // ── Diagnostic: TDMA window tracking ──
+      static bool s_window_active = false;
+      static int  s_window_mslg_sent = 0;
+      static int  s_window_sensor_sent = 0;
+      static int  s_window_mslg_total_at_start = 0;
+
       schedule_msg_t sched = esp_now_get_current_schedule();
       int64_t now_us = esp_timer_get_time();
       bool can_send = false;
@@ -655,26 +837,64 @@ void state_machine_run(void) {
         int64_t my_end = my_start + (sched.slot_duration_sec * 1000000LL);
 
         if (now_us >= my_start && now_us < my_end) {
+          // ── Diagnostic: Window started
+          if (!s_window_active) {
+            s_window_active = true;
+            s_window_mslg_sent = 0;
+            s_window_sensor_sent = 0;
+            s_window_mslg_total_at_start = storage_manager_get_mslg_chunk_count();
+            ESP_LOGI(TAG, "┌─ TDMA WINDOW STARTED ─────────────────────────┐");
+            ESP_LOGI(TAG, "│ Slot: %d | Duration: %ds                      │",
+                     sched.slot_index, sched.slot_duration_sec);
+            ESP_LOGI(TAG, "│ MSLG chunks in storage at start: %d           │",
+                     s_window_mslg_total_at_start);
+            ESP_LOGI(TAG, "└───────────────────────────────────────────────┘");
+          }
+
           // In our TDMA slot — enforce >2s gap so we send exactly once per slot
           if ((now_us - (last_data_send * 1000)) > 2000000LL) {
             can_send = true;
             ESP_LOGI(TAG, "TIME SLICING: In Slot %d (window match), sending...",
                      sched.slot_index);
           }
+        } else if (s_window_active) {
+          // ── Diagnostic: Window ended — print summary
+          int mslg_remaining = storage_manager_get_mslg_chunk_count();
+          int total_payloads = s_window_sensor_sent + s_window_mslg_sent;
+          float pct_sensor = (total_payloads > 0)
+              ? (100.0f * s_window_sensor_sent / total_payloads) : 0.0f;
+          float pct_mslg = (total_payloads > 0)
+              ? (100.0f * s_window_mslg_sent / total_payloads) : 0.0f;
+          ESP_LOGI(TAG, "┌─ TDMA WINDOW ENDED ───────────────────────────────────┐");
+          ESP_LOGI(TAG, "│ Sensor payloads sent : %-4d  (%.1f%% of total)        │",
+                   s_window_sensor_sent, pct_sensor);
+          ESP_LOGI(TAG, "│ MSLG chunks sent     : %-4d  (%.1f%% of total)        │",
+                   s_window_mslg_sent, pct_mslg);
+          ESP_LOGI(TAG, "│ Total packets sent   : %-4d                           │",
+                   total_payloads);
+          ESP_LOGI(TAG, "│ MSLG remaining       : %-4d (was %d at start)         │",
+                   mslg_remaining, s_window_mslg_total_at_start);
+          ESP_LOGI(TAG, "└───────────────────────────────────────────────────────┘");
+          s_window_active = false;
         }
       } else if (s_current_phase == PHASE_DATA) {
-        // ── No-Schedule Fallback
-        // ────────────────────────────────────────────── CH may not have sent a
-        // schedule yet (e.g. neighbors table was empty at phase boundary). Send
-        // once per DATA-phase entry so we still deliver data to the CH.
+        // ── No schedule received yet — DO NOT SEND.
+        // Without a TDMA window all members would transmit simultaneously,
+        // causing collisions (same firmware on every node).  Data stays in
+        // local MSLG storage and will be drained once a schedule arrives.
+        // The CH re-sends schedules every 5 s; BLE pre-guard on the member
+        // ensures the radio is listening when schedules arrive.
+        static bool s_nosched_warned = false;
         bool just_entered_data = (s_last_seen_phase != PHASE_DATA);
-        if (just_entered_data || (now_ms - last_data_send) >= 5000) {
-          can_send = true;
-          ESP_LOGI(TAG,
-                   "NO-SCHED FALLBACK: Sending sensor data (phase=%s, "
-                   "last_send=%llu ms ago)",
-                   just_entered_data ? "NEW_DATA" : "PERIODIC",
-                   (unsigned long long)(now_ms - last_data_send));
+        if (just_entered_data) {
+          s_nosched_warned = false;
+        }
+        if (!s_nosched_warned) {
+          ESP_LOGW(TAG,
+                   "NO-SCHED: Waiting for TDMA schedule from CH "
+                   "(data buffered in MSLG, chunks=%d)",
+                   storage_manager_get_mslg_chunk_count());
+          s_nosched_warned = true;
         }
       }
       s_last_seen_phase = s_current_phase;
@@ -684,20 +904,43 @@ void state_machine_run(void) {
         can_send = false;
       }
 
+      // ─────────────────────────────────────────────────────────────────────
+      // CH_BUSY CHECK: If CH is busy with UAV onboarding, HOLD data
+      // ─────────────────────────────────────────────────────────────────────
+      // Members should NOT send data when CH is offloading to UAV because:
+      // 1. ESP-NOW is deinitialized on CH (no one to receive)
+      // 2. WiFi channel changed (ESP-NOW would fail anyway)
+      // 3. Data would be lost - better to buffer locally
+      // ─────────────────────────────────────────────────────────────────────
+      static bool s_ch_busy_logged = false;
+      if (esp_now_manager_is_ch_busy()) {
+        if (can_send && !s_ch_busy_logged) {
+          ESP_LOGW(TAG, "CH is BUSY with UAV onboarding - HOLDING DATA (will resume when CH sends RESUME)");
+          s_ch_busy_logged = true;
+        }
+        can_send = false;  // Block all sends while CH is busy
+      } else {
+        if (s_ch_busy_logged) {
+          ESP_LOGI(TAG, "CH RESUME received - resuming TDMA data transmission");
+          s_ch_busy_logged = false;
+        }
+      }
+
       // Cache CH MAC in STELLAR phase so we can still send in DATA phase
       // even after BLE stops and the CH beacon timeout fires.
-      if (s_current_phase == PHASE_STELLAR && current_ch != 0) {
+      uint32_t current_ch_for_cache = neighbor_manager_get_current_ch();
+      if (s_current_phase == PHASE_STELLAR && current_ch_for_cache != 0) {
         uint8_t tmp_mac[6];
         if (neighbor_manager_get_ch_mac(tmp_mac)) {
           memcpy(s_cached_ch_mac, tmp_mac, 6);
-          s_cached_ch_id = current_ch;
+          s_cached_ch_id = current_ch_for_cache;
         }
       }
 
       // Use live CH lookup when available; fall back to cache in DATA phase.
       bool ch_available = false;
       uint8_t ch_mac_to_use[6] = {0};
-      if (current_ch != 0) {
+      if (current_ch_for_cache != 0) {
         uint8_t tmp_mac[6];
         if (neighbor_manager_get_ch_mac(tmp_mac)) {
           memcpy(ch_mac_to_use, tmp_mac, 6);
@@ -715,80 +958,29 @@ void state_machine_run(void) {
                  s_cached_ch_id);
       }
 
-      if (can_send) {
-        if (ch_available) {
-          sensor_payload_t payload;
-          metrics_get_sensor_data(&payload);
+      // ---------------------------------------------------------
+      // MEMBER CONTINUOUS STORAGE — MOVED TO MAIN LOOP (ms_node.c)
+      // ---------------------------------------------------------
+      // Previously stored here every 5s using a snapshot of
+      // metrics_get_sensor_data(), but the 100ms task could miss
+      // seqs when the main loop advanced faster than this task
+      // could store.  Now: the main loop stores directly to MSLG
+      // in the SAME iteration that increments seq_num, guaranteeing
+      // zero seq gaps for member data.
+      // ---------------------------------------------------------
 
-          // N2-FIX: Remove timestamp_ms==0 silent drop.
-          // Mock data is valid even before sensor task has run once;
-          // we still want to send it so CH can see members are alive.
-          if (payload.timestamp_ms == 0) {
-            ESP_LOGW(TAG,
-                     "Sensor data has timestamp=0 (sensor task not yet run), "
-                     "sending with current timestamp anyway");
-            payload.timestamp_ms = (uint64_t)(esp_timer_get_time() / 1000ULL);
-            payload.node_id = g_node_id;
-          }
-
-          // FIX: Prevent duplicate storage writes - track last stored sequence
-          // number
-          static uint64_t last_stored_seq = 0;
-          bool should_store = (payload.seq_num != last_stored_seq);
-
-          if (should_store) {
-            // STORE-FIRST: Format as JSON and write to storage (Full sensor
-            // data)
-            char json_payload[384];
-            snprintf(
-                json_payload, sizeof(json_payload),
-                "{\"id\":%lu,\"seq\":%lu,\"mac\":\"%02x%02x%02x%02x%02x%02x\","
-                "\"ts\":%llu,"
-                "\"t\":%.1f,\"h\":%.1f,\"p\":%lu,\"q\":%d,\"eco2\":%d,\"tvoc\":"
-                "%d,"
-                "\"mx\":%.2f,\"my\":%.2f,\"mz\":%.2f,\"a\":%.3f}",
-                payload.node_id, payload.seq_num, payload.mac_addr[0],
-                payload.mac_addr[1], payload.mac_addr[2], payload.mac_addr[3],
-                payload.mac_addr[4], payload.mac_addr[5], payload.timestamp_ms,
-                payload.temp_c, payload.hum_pct,
-                (unsigned long)payload.pressure_hpa, payload.aqi,
-                payload.eco2_ppm, payload.tvoc_ppb, payload.mag_x,
-                payload.mag_y, payload.mag_z, payload.audio_rms);
-
-            esp_err_t ret =
-                storage_manager_write_compressed(json_payload, true);
-            if (ret == ESP_OK) {
-              last_stored_seq = payload.seq_num;
-              ESP_LOGI(TAG, "Stored sensor data (Store-First): seq=%lu",
-                       payload.seq_num);
-            } else {
-              ESP_LOGE(TAG, "Failed to store sensor data: %s",
-                       esp_err_to_name(ret));
-            }
-          } else {
-            // Sequence number already stored, skip storage but still send
-            ESP_LOGD(TAG,
-                     "Skipping duplicate storage for seq=%lu (already stored)",
-                     payload.seq_num);
-          }
-          // CRITICAL FIX: Actually send sensor payload via ESP-NOW to CH
-          esp_err_t send_ret = esp_now_manager_send_data(
-              ch_mac_to_use, (uint8_t *)&payload, sizeof(sensor_payload_t));
-          if (send_ret == ESP_OK) {
-            last_data_send = now_ms;
-            ESP_LOGI(TAG,
-                     "Sent sensor data via ESP-NOW to CH: seq=%lu, node_id=%lu",
-                     payload.seq_num, payload.node_id);
-          } else {
-            ESP_LOGW(TAG, "ESP-NOW send failed: %s (seq=%lu)",
-                     esp_err_to_name(send_ret), payload.seq_num);
-          }
-        } else {
-          ESP_LOGW(TAG,
-                   "CH MAC unknown (BLE off + cache empty), cannot send. "
-                   "current_ch=%lu cached_ch=%lu",
-                   current_ch, s_cached_ch_id);
-        }
+      // ---------------------------------------------------------
+      // MEMBER SEND — ONLY WITHIN ASSIGNED TDMA SLOT
+      // ---------------------------------------------------------
+      // No fallback send without a schedule: identical firmware on
+      // all members would fire simultaneously → RF collisions.
+      // Data stays in local MSLG until a TDMA window is received.
+      // The CH re-sends schedules every 5s during DATA phase and
+      // the member BLE pre-guard ensures reception.
+      // ---------------------------------------------------------
+      if (can_send && has_valid_schedule) {
+        last_data_send = now_ms;
+        ESP_LOGD(TAG, "TDMA slot active - burst drain will handle data delivery");
       }
 
       // -------------------------------------------------------------
@@ -820,29 +1012,25 @@ void state_machine_run(void) {
       // -------------------------------------------------------------
       // 2. Failover Data Transfer & Burst Upload (Store-First Drain)
       // -------------------------------------------------------------
-      if (s_current_phase == PHASE_DATA && in_slot && current_ch != 0) {
+      if (s_current_phase == PHASE_DATA && in_slot && ch_available) {
         uint8_t ch_mac[6];
-        if (neighbor_manager_get_ch_mac(ch_mac)) {
-          // Prepare the queue (Rename data.txt -> queue.txt)
-          // Returns OK if renamed OR if queue already exists
-          if (storage_manager_prepare_upload() == ESP_OK) {
+        memcpy(ch_mac, ch_mac_to_use, 6); // Use cached MAC (resolved above with fallback)
+        {
+          int64_t cutoff_us = slot_end_us - 500000LL; // 500ms margin
 
+          // ── 2a. Plain-text queue drain (data.txt → queue.txt) ──
+          if (storage_manager_prepare_upload() == ESP_OK) {
             FILE *q = storage_manager_open_queue();
             if (q) {
               char history_line[256];
               int packets_sent = 0;
-              int64_t cutoff_us = slot_end_us - 500000LL; // 500ms margin
 
-              // Drain Loop: Read line-by-line using fgets (O(1) per line)
               while (fgets(history_line, sizeof(history_line), q)) {
-                // Check time budget
                 if (esp_timer_get_time() >= cutoff_us) {
-                  ESP_LOGW(TAG,
-                           "OFFLOAD: Time budget exceeded, pausing queue.");
+                  ESP_LOGW(TAG, "OFFLOAD: Time budget exceeded, pausing queue.");
                   break;
                 }
 
-                // Strip newline
                 size_t len = strlen(history_line);
                 if (len > 0 && history_line[len - 1] == '\n') {
                   history_line[len - 1] = 0;
@@ -851,18 +1039,14 @@ void state_machine_run(void) {
                 if (len == 0)
                   continue;
 
-                // Send as Historical Data (Raw JSON string)
                 esp_err_t ret = esp_now_manager_send_data(
                     ch_mac, (uint8_t *)history_line, len);
 
                 if (ret == ESP_OK) {
                   packets_sent++;
-                  // Fast throttle (20ms) to allow mesh processing
                   vTaskDelay(pdMS_TO_TICKS(20));
                 } else {
                   ESP_LOGW(TAG, "OFFLOAD: Send failed, pausing queue.");
-                  // Ideally we should seek back or retry, but for simplicity
-                  // we prioritize not blocking. Data stays in queue.
                   break;
                 }
               }
@@ -871,7 +1055,6 @@ void state_machine_run(void) {
               fclose(q);
 
               if (uploading_done) {
-                // Queue fully processed, delete it
                 storage_manager_remove_queue();
                 ESP_LOGI(TAG, "OFFLOAD: Queue drained (%d items). Deleted.",
                          packets_sent);
@@ -880,106 +1063,137 @@ void state_machine_run(void) {
                          "OFFLOAD: Partial drain (%d items). Queue retained.",
                          packets_sent);
               }
+            }
+          }
 
-              // After plain-text queue drain, also attempt to drain MSLG
-              // compressed chunks (DATA_FILE_COMPRESSED). These were written
-              // by storage_manager_write_compressed(). We pop the oldest
-              // chunk, decompress if needed, and attempt to send.
-              {
-                int comp_sent = 0;
-                const int MAX_MSLG_BURST = 8; // limit per slot to avoid blocking
-                while (esp_timer_get_time() < cutoff_us &&
-                       comp_sent < MAX_MSLG_BURST) {
-                  uint8_t *chunk_payload = NULL;
-                  size_t chunk_len = 0;
-                  uint32_t raw_len = 0;
-                  uint8_t algo = 0;
-                  uint32_t ts = 0;
+          // ── 2b. MSLG compressed chunk drain (data.lz) ──
+          // Runs INDEPENDENTLY of plain-text queue — data goes to data.lz
+          // via storage_manager_write_compressed(), not data.txt.
+          //
+          // *** BATCH OPTIMISATION (v4) ***
+          // Old approach: pop_mslg_chunk() per send = full SPIFFS file
+          //   rewrite per chunk (~900 ms each).  6 chunks maxed out the
+          //   7.5 s TDMA slot → remaining grew by +2/superframe.
+          // New approach: batch-pop ALL chunks into RAM in ONE SPIFFS
+          //   pass, then send them via send_data_fast() (no BLE quiet
+          //   window since BLE is already off in DATA phase).
+          //   Expected: ~900 ms total SPIFFS I/O + ~50 ms × N sends.
+          {
+            /* Batch pop up to 24 chunks (covers ~2 minutes of backlog). */
+            #define BATCH_POP_MAX 24
+            mslg_popped_chunk_t batch[BATCH_POP_MAX];
+            int batch_count = 0;
 
-                  if (storage_manager_pop_mslg_chunk(&chunk_payload, &chunk_len,
-                                                     &raw_len, &algo, &ts) !=
-                      ESP_OK) {
-                    break; // no more compressed chunks
+            esp_err_t pop_err = storage_manager_pop_mslg_chunks_batch(
+                batch, BATCH_POP_MAX, &batch_count);
+
+            int comp_sent = 0;
+
+            if (pop_err == ESP_OK && batch_count > 0) {
+              for (int bi = 0; bi < batch_count; bi++) {
+
+                /* Time budget check — requeue unsent chunks */
+                if (esp_timer_get_time() >= cutoff_us) {
+                  ESP_LOGW(TAG, "OFFLOAD: Time budget hit at chunk %d/%d, requeueing rest",
+                           bi, batch_count);
+                  for (int ri = bi; ri < batch_count; ri++) {
+                    storage_manager_write_compressed(
+                        (const char *)batch[ri].payload, (batch[ri].algo == 1));
+                    heap_caps_free(batch[ri].payload);
+                  }
+                  break;
+                }
+
+                uint8_t *send_buf = batch[bi].payload;
+                size_t send_len = batch[bi].payload_len;
+                uint8_t *decomp_buf = NULL;
+
+                /* Decompress if needed */
+                if (batch[bi].algo == 1) {
+                  decomp_buf = heap_caps_malloc(batch[bi].raw_len, MALLOC_CAP_8BIT);
+                  if (!decomp_buf) {
+                    ESP_LOGW(TAG, "OFFLOAD: OOM decompress chunk %d, requeueing rest", bi);
+                    for (int ri = bi; ri < batch_count; ri++) {
+                      storage_manager_write_compressed(
+                          (const char *)batch[ri].payload, true);
+                      heap_caps_free(batch[ri].payload);
+                    }
+                    break;
                   }
 
-                  uint8_t *send_buf = chunk_payload;
-                  size_t send_len = chunk_len;
-                  uint8_t *decomp_buf = NULL;
+                  size_t out_len = batch[bi].raw_len;
+                  comp_stats_t stats = {0};
+                  esp_err_t derr = lz_decompress_miniz(
+                      batch[bi].payload, batch[bi].payload_len,
+                      decomp_buf, batch[bi].raw_len, &out_len, &stats);
 
-                  if (algo == 1) {
-                    // Decompress into RAM before sending (we send raw/uncompressed)
-                    decomp_buf = heap_caps_malloc(raw_len, MALLOC_CAP_8BIT);
-                    if (!decomp_buf) {
-                      ESP_LOGW(TAG, "OFFLOAD: No memory to decompress chunk, requeueing");
-                      // Re-append by re-storing raw JSON (best-effort)
-                      // Attempt to decompress into small buffer first
-                      heap_caps_free(chunk_payload);
-                      break;
+                  if (derr != ESP_OK || out_len != batch[bi].raw_len) {
+                    ESP_LOGW(TAG, "OFFLOAD: Decompress fail chunk %d, requeueing rest", bi);
+                    heap_caps_free(decomp_buf);
+                    for (int ri = bi; ri < batch_count; ri++) {
+                      storage_manager_write_compressed(
+                          (const char *)batch[ri].payload, true);
+                      heap_caps_free(batch[ri].payload);
                     }
-
-                    size_t out_len = raw_len;
-                    comp_stats_t stats = {0};
-                    esp_err_t derr = lz_decompress_miniz(chunk_payload, chunk_len,
-                                                         decomp_buf, raw_len, &out_len,
-                                                         &stats);
-                    if (derr != ESP_OK || out_len != raw_len) {
-                      ESP_LOGW(TAG, "OFFLOAD: Decompression failed, requeueing");
-                      heap_caps_free(decomp_buf);
-                      // Requeue: write decompressed as raw would be ideal but
-                      // decompression failed so we drop this iteration and reappend
-                      // the compressed blob by writing it back as-is (best-effort
-                      // using write_compressed is not possible without raw JSON).
-                      // To avoid data loss we append original compressed payload
-                      // by calling storage_manager_write_compressed on a
-                      // best-effort fallback: write raw chunk as a hex string
-                      // (not ideal). For now we re-append by writing raw payload
-                      // as a fallback.
-                      storage_manager_write_compressed((const char *)chunk_payload, false);
-                      heap_caps_free(chunk_payload);
-                      break;
-                    }
-
-                    // Use decompressed buffer for sending
-                    send_buf = decomp_buf;
-                    send_len = out_len;
-                    // free compressed payload (we hold decompressed)
-                    heap_caps_free(chunk_payload);
+                    break;
                   }
 
-                  esp_err_t send_ret = esp_now_manager_send_data(ch_mac, send_buf, send_len);
-                  if (send_ret == ESP_OK) {
-                    comp_sent++;
-                    // small throttle to yield to other tasks
-                    vTaskDelay(pdMS_TO_TICKS(20));
-                    if (decomp_buf) {
-                      heap_caps_free(decomp_buf);
-                    } else {
-                      heap_caps_free(chunk_payload);
-                    }
+                  send_buf = decomp_buf;
+                  send_len = out_len;
+                  heap_caps_free(batch[bi].payload);
+                  batch[bi].payload = NULL;
+                }
+
+                /* Send via fast path (no BLE quiet window) */
+                esp_err_t send_ret = esp_now_manager_send_data_fast(
+                    ch_mac, send_buf, send_len);
+
+                if (send_ret == ESP_OK) {
+                  comp_sent++;
+                  s_window_mslg_sent++;
+                  vTaskDelay(pdMS_TO_TICKS(5));
+                  if (decomp_buf) {
+                    heap_caps_free(decomp_buf);
                   } else {
-                    ESP_LOGW(TAG, "OFFLOAD: Compressed chunk send failed, requeueing");
-                    // Re-append the payload to storage for retry later.
-                    if (send_buf && send_len > 0) {
-                      // Write back (will compress again if enabled)
-                      storage_manager_write_compressed((const char *)send_buf, true);
-                    }
-                    if (decomp_buf) heap_caps_free(decomp_buf);
-                    break; // stop draining this slot
+                    heap_caps_free(batch[bi].payload);
                   }
-                } // while draining compressed
-                if (comp_sent > 0) {
-                  ESP_LOGI(TAG, "OFFLOAD: Compressed drain sent %d packets", comp_sent);
+                  batch[bi].payload = NULL;
+                } else {
+                  ESP_LOGW(TAG, "OFFLOAD: fast send fail chunk %d, requeueing rest", bi);
+                  /* Requeue this chunk and all remaining */
+                  if (decomp_buf) {
+                    storage_manager_write_compressed(
+                        (const char *)decomp_buf, false);
+                    heap_caps_free(decomp_buf);
+                  } else {
+                    storage_manager_write_compressed(
+                        (const char *)batch[bi].payload, true);
+                    heap_caps_free(batch[bi].payload);
+                  }
+                  batch[bi].payload = NULL;
+                  for (int ri = bi + 1; ri < batch_count; ri++) {
+                    storage_manager_write_compressed(
+                        (const char *)batch[ri].payload, true);
+                    heap_caps_free(batch[ri].payload);
+                    batch[ri].payload = NULL;
+                  }
+                  break;
                 }
               }
+            }
 
-            } // if(q)
-          } // if(prepare)
+            if (comp_sent > 0) {
+              ESP_LOGI(TAG, "OFFLOAD: MSLG drain sent %d chunks | remaining: %d",
+                       comp_sent, storage_manager_get_mslg_chunk_count());
+            }
+          }
+
         }
       }
 
       // Fallback: Lazy single line sync if no schedule
       static uint64_t last_history_sync = 0;
-      if (!in_slot && current_ch != 0 &&
+      if (!in_slot && current_ch_for_cache != 0 &&
           (esp_timer_get_time() / 1000 - last_history_sync) >= 5000) {
         // ... existing fallback code ...
       }
@@ -988,28 +1202,81 @@ void state_machine_run(void) {
     break;
 
   case STATE_UAV_ONBOARDING:
-    // UAV Interaction Phase
+    // UAV Interaction Phase - Temporarily switch from ESP-NOW to WiFi STA
     {
-      ESP_LOGI(TAG, "Starting UAV Onboarding Sequence...");
+      ESP_LOGI(TAG, "╔══════════════════════════════════════════════════════════╗");
+      ESP_LOGI(TAG, "║       UAV ONBOARDING: Suspending STELLAR Protocol        ║");
+      ESP_LOGI(TAG, "╚══════════════════════════════════════════════════════════╝");
 
-      // Stop BLE temporarily to avoid interference
+      // 0. DISABLE RF receiver to prevent multiple triggers during onboarding
+      ESP_LOGI(TAG, "[0/8] Disabling RF receiver to prevent multiple triggers");
+      extern void rf_receiver_disable(void);
+      rf_receiver_disable();
+
+      // 1. FIRST: Broadcast CH_BUSY status to ALL members via ESP-NOW
+      //    Members will see this and HOLD their data (not try to send during onboarding)
+      ESP_LOGI(TAG, "[1/8] Broadcasting CH_BUSY to members - HOLD DATA");
+      esp_now_manager_broadcast_ch_status(CH_STATUS_UAV_BUSY);
+      vTaskDelay(pdMS_TO_TICKS(200)); // Give time for broadcasts to complete
+
+      // 2. Stop BLE scanning to avoid radio interference
+      ESP_LOGI(TAG, "[2/8] Stopping BLE scanning");
       ble_manager_stop_scanning();
+      ble_manager_stop_advertising();
 
-      // Execute onboarding (Blocking for now)
+      // 3. Deinit ESP-NOW (channel conflict with WiFi AP connection)
+      //    ESP-NOW uses fixed channel, WiFi STA connects to UAV AP on its channel
+      ESP_LOGI(TAG, "[3/8] Deinitializing ESP-NOW for WiFi STA mode");
+      esp_err_t err = esp_now_manager_deinit();
+      if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to deinit ESP-NOW: %s", esp_err_to_name(err));
+      }
+
+      // 4. Execute UAV onboarding (WiFi connect → HTTP upload → ACK)
+      //    This uploads ALL stored sensor data to the UAV server
+      ESP_LOGI(TAG, "[4/8] Executing UAV onboarding sequence...");
+      ESP_LOGI(TAG, "       - Connecting to UAV WiFi AP (WSN_AP)");
+      ESP_LOGI(TAG, "       - Uploading ALL stored sensor data");
+      ESP_LOGI(TAG, "       - Waiting for server ACK");
+      
       esp_err_t ret = uav_client_run_onboarding();
 
       if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "UAV Onboarding SUCCESS");
+        ESP_LOGI(TAG, "╔══════════════════════════════════════════════════════════╗");
+        ESP_LOGI(TAG, "║         UAV Onboarding SUCCESS: Data Offloaded           ║");
+        ESP_LOGI(TAG, "╚══════════════════════════════════════════════════════════╝");
       } else {
-        ESP_LOGE(TAG, "UAV Onboarding FAILED: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "╔══════════════════════════════════════════════════════════╗");
+        ESP_LOGE(TAG, "║         UAV Onboarding FAILED: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "╚══════════════════════════════════════════════════════════╝");
       }
 
-      // Return to CH state
-      ESP_LOGI(TAG, "Returning to CH state");
+      // 5. Cleanup UAV client resources (destroy STA netif before reinit)
+      ESP_LOGI(TAG, "[5/8] Reinitializing ESP-NOW on fixed channel");
+      uav_client_cleanup();  // Destroy STA netif before ESP-NOW reinit
+      err = esp_now_manager_reinit();
+      if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to reinit ESP-NOW: %s", esp_err_to_name(err));
+      }
+
+      // 6. Broadcast CH_RESUME status to ALL members
+      //    Members will see this and RESUME their TDMA data sending
+      ESP_LOGI(TAG, "[6/8] Broadcasting CH_RESUME to members - RESUME TDMA");
+      esp_now_manager_broadcast_ch_status(CH_STATUS_RESUME);
+      vTaskDelay(pdMS_TO_TICKS(100)); // Give time for broadcast
+
+      // 7. Re-enable RF receiver to listen for future triggers
+      ESP_LOGI(TAG, "[7/8] Re-enabling RF receiver");
+      extern void rf_receiver_enable(void);
+      rf_receiver_enable();
+
+      // 8. Return to CH state and resume STELLAR protocol
+      ESP_LOGI(TAG, "[8/8] Returning to CH state, resuming STELLAR protocol");
       transition_to_state(STATE_CH);
 
-      // Re-enable BLE advertising
+      // Re-enable BLE advertising (beacons for members)
       ble_manager_start_advertising();
+      ESP_LOGI(TAG, "BLE advertising resumed - STELLAR protocol active");
     }
     break;
 

@@ -116,5 +116,52 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
 										uint32_t *out_raw_len, uint8_t *out_algo,
 										uint32_t *out_timestamp);
 
+/**
+ * @brief Descriptor for a single MSLG chunk returned by batch pop.
+ * Caller must free(payload) for each entry.
+ */
+typedef struct {
+    uint8_t *payload;      /**< Heap-allocated compressed/raw data */
+    size_t   payload_len;  /**< Bytes in payload */
+    uint32_t raw_len;      /**< Original uncompressed length */
+    uint8_t  algo;         /**< 0=raw, 1=miniz */
+    uint32_t timestamp;    /**< Header timestamp (seconds since boot) */
+} mslg_popped_chunk_t;
+
+/**
+ * @brief Pop up to max_chunks MSLG chunks in ONE SPIFFS pass.
+ *
+ * Reads N chunk headers + payloads sequentially, copies the remaining
+ * tail of the file once, then replaces the original.  This is O(1) file
+ * rewrites vs O(N) for calling pop_mslg_chunk() N times.
+ *
+ * @param[out] out_chunks   Caller-provided array of mslg_popped_chunk_t
+ * @param      max_chunks   Size of out_chunks array
+ * @param[out] out_count    Number of chunks actually popped
+ * @return ESP_OK, ESP_ERR_NOT_FOUND (file empty), or error
+ */
+esp_err_t storage_manager_pop_mslg_chunks_batch(mslg_popped_chunk_t *out_chunks,
+                                                 int max_chunks,
+                                                 int *out_count);
+
+
+/**
+ * @brief Count the number of MSLG chunks currently stored in the compressed data file.
+ * @return Number of valid MSLG chunks (0 if file empty or missing)
+ */
+int storage_manager_get_mslg_chunk_count(void);
+
+/**
+ * @brief Check SPIFFS usage and purge ALL stored data when capacity >= 90%.
+ *
+ * Deletes data.lz, data.txt, and queue.txt so the node can continue
+ * collecting fresh sensor readings instead of silently failing writes.
+ * Called automatically before every MSLG write, but can also be invoked
+ * manually (e.g. from a diagnostic command).
+ *
+ * @return true  if a purge was performed
+ * @return false if usage is below threshold (no action taken)
+ */
+bool storage_manager_purge_if_full_public(void);
 
 void storage_manager_display_status(void);

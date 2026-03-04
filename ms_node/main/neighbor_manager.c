@@ -39,20 +39,28 @@ void neighbor_manager_update(uint32_t node_id, const uint8_t *mac_addr,
                              int8_t rssi, float score, float battery,
                              uint64_t uptime, float trust, float link_quality,
                              bool is_ch, uint8_t seq_num) {
-  if (neighbor_mutex == NULL)
+  ESP_LOGI(TAG, "[DEBUG] neighbor_manager_update called: node_id=%lu, rssi=%d, score=%.2f, trust=%.2f, seq=%d",
+           node_id, rssi, score, trust, seq_num);
+           
+  if (neighbor_mutex == NULL) {
+    ESP_LOGW(TAG, "[DEBUG] neighbor_mutex is NULL, returning");
     return;
+  }
 
-  // Try to take mutex with timeout (don't block BLE task too long)
-  if (xSemaphoreTake(neighbor_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
-    ESP_LOGW(TAG, "Failed to take mutex for update");
+  // Try to take mutex with longer timeout to prevent race conditions
+  if (xSemaphoreTake(neighbor_mutex, pdMS_TO_TICKS(500)) != pdTRUE) {
+    ESP_LOGW(TAG, "Failed to take mutex for update after 500ms timeout");
     return;
   }
 
   uint64_t now_ms = esp_timer_get_time() / 1000;
 
+  ESP_LOGI(TAG, "[DEBUG] Searching for existing neighbor %lu in table of %zu entries", node_id, neighbor_count);
+  
   // Find existing entry
   for (size_t i = 0; i < neighbor_count; i++) {
     if (neighbor_table[i].node_id == node_id) {
+      ESP_LOGI(TAG, "[DEBUG] Found existing neighbor %lu at index %zu, updating", node_id, i);
       // Update existing
       neighbor_entry_t *entry = &neighbor_table[i];
 
@@ -108,18 +116,31 @@ void neighbor_manager_update(uint32_t node_id, const uint8_t *mac_addr,
       entry->verified = true;
 
       xSemaphoreGive(neighbor_mutex);
+      ESP_LOGI(TAG, "[DEBUG] Updated existing neighbor %lu, returning", node_id);
       return;
     }
   }
 
-  // Add new neighbor
+  ESP_LOGI(TAG, "[DEBUG] Node %lu not found in table, attempting to add as new neighbor", node_id);
+  
+  // Add new neighbor with retry mechanism
   if (neighbor_count < MAX_NEIGHBORS) {
+    ESP_LOGI(TAG, "[DEBUG] Table has space (%zu < %d), adding node %lu at index %zu", neighbor_count, MAX_NEIGHBORS, node_id, neighbor_count);
     neighbor_entry_t *entry = &neighbor_table[neighbor_count];
+    
+    // Initialize entry with all provided data
+    memset(entry, 0, sizeof(neighbor_entry_t)); // Clear entry first
     entry->node_id = node_id;
     if (mac_addr) {
       memcpy(entry->mac_addr, mac_addr, 6);
-      // Register as ESP-NOW peer
-      esp_now_manager_register_peer(mac_addr, false);
+      // Register as ESP-NOW peer - critical for TDMA scheduling
+      esp_err_t peer_reg = esp_now_manager_register_peer(mac_addr, false);
+      if (peer_reg != ESP_OK) {
+        ESP_LOGW(TAG, "[DEBUG] ESP-NOW peer registration failed for node %lu: %s", node_id, esp_err_to_name(peer_reg));
+        // Continue anyway - peer registration can be retried later
+      } else {
+        ESP_LOGI(TAG, "[DEBUG] ESP-NOW peer registered successfully for node %lu", node_id);
+      }
     }
     entry->rssi_ewma = (float)rssi;
     entry->last_rssi = rssi;
@@ -131,13 +152,23 @@ void neighbor_manager_update(uint32_t node_id, const uint8_t *mac_addr,
     entry->last_seen_ms = now_ms;
     entry->is_ch = is_ch;
     entry->ch_announce_timestamp = is_ch ? now_ms : 0;
-    entry->verified = true;
+    entry->verified = true; // Mark as verified since BLE HMAC passed
     entry->last_seq_num = seq_num; // Initialize sequence number
+    
+    // CRITICAL: Increment count AFTER all fields are set
     neighbor_count++;
 
     ESP_LOGI(TAG, "Added neighbor: node_id=%lu, RSSI=%d, Seq=%d", node_id, rssi,
              seq_num);
+    ESP_LOGI(TAG, "[DEBUG] Successfully added neighbor %lu, new table size: %zu, verified=%d, trust=%.2f", 
+             node_id, neighbor_count, entry->verified, entry->trust);
   } else {
+    ESP_LOGW(TAG, "[DEBUG] Cannot add node %lu - neighbor table full (%zu/%d)", node_id, neighbor_count, MAX_NEIGHBORS);
+    ESP_LOGW(TAG, "[DEBUG] Current neighbors in table:");
+    for (size_t i = 0; i < neighbor_count; i++) {
+      ESP_LOGW(TAG, "[DEBUG]   [%zu] node_id=%lu, last_seen=%llu ms ago, verified=%d", 
+               i, neighbor_table[i].node_id, now_ms - neighbor_table[i].last_seen_ms, neighbor_table[i].verified);
+    }
     // Only warn occasionally to prevent log flooding
     static uint64_t last_warn = 0;
     if (now_ms - last_warn > 5000) {
@@ -147,6 +178,14 @@ void neighbor_manager_update(uint32_t node_id, const uint8_t *mac_addr,
   }
 
   xSemaphoreGive(neighbor_mutex);
+  
+  // Log final verification of neighbor addition
+  neighbor_entry_t verification_entry;
+  if (neighbor_manager_get(node_id, &verification_entry)) {
+    ESP_LOGI(TAG, "[DEBUG] VERIFICATION: Node %lu successfully found in table after addition", node_id);
+  } else {
+    ESP_LOGE(TAG, "[DEBUG] VERIFICATION FAILED: Node %lu NOT found in table after apparent addition!", node_id);
+  }
 }
 
 bool neighbor_manager_get(uint32_t node_id, neighbor_entry_t *out_entry) {

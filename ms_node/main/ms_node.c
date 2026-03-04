@@ -393,10 +393,10 @@ void app_main(void) {
   battery_cfg_t bcfg = {
       .unit = ADC_UNIT_1,
       .channel = ADC_CHANNEL_3, // ADC1 CH3 = GPIO4 (ESP32-S3)
-      .atten = ADC_ATTEN_DB_2_5,
-      .r1_ohm = 220000,
-      .r2_ohm = 100000,
-      .samples = 32,
+      .atten = ADC_ATTEN_DB_12, // Use DB_12 for ~0-3.1V range (matches working test code)
+      .r1_ohm = 232000,         // Top resistor (updated to match working test code)
+      .r2_ohm = 33000,          // Bottom resistor
+      .samples = 8,             // 8 samples like working test code
   };
   ESP_ERROR_CHECK(battery_init(&bcfg));
 
@@ -546,47 +546,30 @@ void app_main(void) {
       (void)sensor_config_load(&s_sensor_config);
     }
 
-    // ---- Battery read (real) ----
+    // ---- Battery read (always use ADC; remove simulated/mock battery) ----
     uint32_t vadc_mv = 0, vbat_mv = 0;
     uint8_t batt_pct = 0;
-    bool use_mock_battery = false;
 
-#if ENABLE_MOCK_SENSORS
-    use_mock_battery = true;
-#endif
-
-    // If not forced mock, try real read. If read fails or voltage is critically
-    // low (floating pin), fallback to dummy/mock.
-    if (!use_mock_battery &&
-        battery_read(&vadc_mv, &vbat_mv, &batt_pct) == ESP_OK &&
-        vbat_mv > 2000) {
+    // Try to read battery from ADC. If successful and voltage is sane, use it.
+    if (battery_read(&vadc_mv, &vbat_mv, &batt_pct) == ESP_OK && vbat_mv > 2000) {
       s_battery_real = true;
       ESP_LOGI(TAG, "BAT vadc=%lumV vbat=%lumV pct=%u%%",
                (unsigned long)vadc_mv, (unsigned long)vbat_mv, batt_pct);
-
-      // Feed PME with real percentage
       pme_set_batt_pct(batt_pct);
     } else {
+      // ADC read failed or voltage out of range. Do NOT synthesize values.
       s_battery_real = false;
-      // Mock Mode or Fallback
-#if ENABLE_MOCK_SENSORS
-      // Simulate battery drain
-      static uint8_t sim_batt = 100;
-      static int calls = 0;
-      if (calls++ % 10 == 0 && sim_batt > 10)
-        sim_batt--;
-      batt_pct = sim_batt;
-      vbat_mv = 3300 + (sim_batt * 9); // Approximate 3.3V - 4.2V mapped
-      ESP_LOGW(TAG, "[MOCK] Battery: %u%% (Simulated)", batt_pct);
+      uint8_t prev_pct = pme_get_batt_pct();
+      if (prev_pct == 0) {
+        // If we have no prior value, assume fully charged to avoid
+        // immediate power-save transitions on boot with a flaky ADC.
+        batt_pct = 100;
+      } else {
+        batt_pct = prev_pct;
+      }
+      ESP_LOGW(TAG, "Battery ADC read failed or out-of-range; using last known pct=%u%%",
+               batt_pct);
       pme_set_batt_pct(batt_pct);
-#else
-      // Fallback for USB power (no battery detected but node is running)
-      // Assume 100% to prevent re-election loop due to "dead battery"
-      batt_pct = 100;
-      vbat_mv = 5000; // USB voltage approx
-      ESP_LOGW(TAG, "Battery not detected (USB Power?), assuming 100%%");
-      pme_set_batt_pct(batt_pct);
-#endif
     }
 
     // PME mode is always derived from the latest stored % (real if available)
@@ -888,23 +871,37 @@ void app_main(void) {
           ESP_LOGW(TAG, "Log line truncated, skipped");
         }
       }
+    } // end if (any_ok) — logger block
 
-      // Update metrics with latest sensor data for CH transmission
+    // ──────────────────────────────────────────────────────────────────────
+    // METRICS UPDATE — runs EVERY main-loop iteration regardless of whether
+    // real sensors fired this cycle.  seq_num must advance every loop so the
+    // state machine (which reads via metrics_get_sensor_data) always has a
+    // fresh, unique sequence number.  Mock data fills any gaps.
+    // ──────────────────────────────────────────────────────────────────────
+    {
       static uint32_t s_packet_seq_num = 0;
+
       s_sensors_real = real_bme || real_aht || real_ens || real_mag ||
                        real_ina || real_audio;
 
       sensor_payload_t payload = {0};
       payload.node_id = g_node_id;
       payload.timestamp_ms = (uint64_t)(esp_timer_get_time() / 1000ULL);
-      payload.seq_num = s_packet_seq_num++;
+
+      // Always advance seq — every loop produces a unique reading
+      // (mock data uses esp_random(), real sensors have fresh timestamps)
+      s_packet_seq_num++;
+      payload.seq_num = s_packet_seq_num;
+
       payload.flags = (s_sensors_real ? SENSOR_PAYLOAD_FLAG_SENSORS_REAL : 0) |
                       (s_battery_real ? SENSOR_PAYLOAD_FLAG_BATTERY_REAL : 0);
 
       uint8_t mac[6];
-      esp_read_mac(mac, ESP_MAC_BT); // Use BT/BLE MAC as node ID is based on it
+      esp_read_mac(mac, ESP_MAC_BT);
       memcpy(payload.mac_addr, mac, 6);
 
+      // Use real sensor values if available this cycle
       if (ok_bme) {
         payload.temp_c = bme.temperature_c;
         payload.hum_pct = bme.humidity_pct;
@@ -930,34 +927,70 @@ void app_main(void) {
         payload.audio_rms = audio.rms_amplitude;
       }
 
-      // MOCK DATA FALLBACK: Fill in synthetic values for each failed sensor
-      // type
-      bool any_mock = false;
+      // MOCK DATA FALLBACK: Fill in synthetic sensor values with realistic
+      // randomness for every read. Each call to esp_random() produces a
+      // fresh hardware-RNG value, so every payload is unique.
       if (!ok_bme && !ok_aht) {
-        payload.temp_c = 25.0f + ((float)(esp_random() % 100) / 10.0f - 5.0f);
-        payload.hum_pct = 60.0f + ((float)(esp_random() % 200) / 10.0f - 10.0f);
-        any_mock = true;
+        payload.temp_c = 22.0f + ((float)(esp_random() % 160) / 10.0f - 3.0f);
+        payload.hum_pct = 50.0f + ((float)(esp_random() % 300) / 10.0f - 10.0f);
+        payload.pressure_hpa = 1005 + (esp_random() % 20);
       }
       if (!ok_ens) {
-        payload.aqi = 50 + (esp_random() % 50);
-        any_mock = true;
+        payload.aqi = 30 + (esp_random() % 120);
+        payload.eco2_ppm = 400 + (esp_random() % 800);
+        payload.tvoc_ppb = 10 + (esp_random() % 490);
       }
       if (!ok_mag) {
         payload.mag_x = ((float)(esp_random() % 1000) / 10.0f - 50.0f);
         payload.mag_y = ((float)(esp_random() % 1000) / 10.0f - 50.0f);
         payload.mag_z = ((float)(esp_random() % 1000) / 10.0f - 50.0f);
-        any_mock = true;
       }
       if (!ok_audio) {
-        payload.audio_rms = 0.01f + ((float)(esp_random() % 100) / 10000.0f);
-        any_mock = true;
-      }
-      if (any_mock) {
-        ESP_LOGW(TAG, "MOCK data for missing sensors (T=%.1f H=%.1f AQI=%u)",
-                 payload.temp_c, payload.hum_pct, payload.aqi);
+        payload.audio_rms = 0.001f + ((float)(esp_random() % 500) / 10000.0f);
       }
 
       metrics_set_sensor_data(&payload);
+
+      // ──────────────────────────────────────────────────────────────────
+      // DIRECT MSLG STORAGE FOR ALL NODES (CH + MEMBER)
+      // ──────────────────────────────────────────────────────────────────
+      // Store sensor data directly to MSLG in the SAME loop iteration that
+      // increments seq_num.  This guarantees every single seq is captured
+      // regardless of SPIFFS contention from received MBR data (CH
+      // starvation fix) or phase timing (member gap fix).
+      //
+      // For CH: replaces the old state_machine.c self-storage which could
+      //   be starved when processing burst MBR receives.
+      // For Members: replaces the state_machine.c continuous storage which
+      //   ran on a separate 100ms task and could miss seqs.
+      // ──────────────────────────────────────────────────────────────────
+      if (g_current_state == STATE_CH || g_current_state == STATE_MEMBER) {
+        char json_payload[384];
+        snprintf(
+            json_payload, sizeof(json_payload),
+            "{\"id\":%lu,\"seq\":%lu,\"mac\":\"%02x%02x%02x%02x%02x%02x\","
+            "\"ts\":%llu,"
+            "\"t\":%.1f,\"h\":%.1f,\"p\":%lu,\"q\":%d,\"eco2\":%d,\"tvoc\":%d,"
+            "\"mx\":%.2f,\"my\":%.2f,\"mz\":%.2f,\"a\":%.3f}",
+            payload.node_id, payload.seq_num, payload.mac_addr[0],
+            payload.mac_addr[1], payload.mac_addr[2], payload.mac_addr[3],
+            payload.mac_addr[4], payload.mac_addr[5], payload.timestamp_ms,
+            payload.temp_c, payload.hum_pct,
+            (unsigned long)payload.pressure_hpa, payload.aqi, payload.eco2_ppm,
+            payload.tvoc_ppb, payload.mag_x, payload.mag_y, payload.mag_z,
+            payload.audio_rms);
+
+        esp_err_t ret = storage_manager_write_compressed(json_payload, true);
+        if (ret == ESP_OK) {
+          ESP_LOGI(TAG, "Stored seq=%lu to MSLG (role=%s) | chunks: %d",
+                   payload.seq_num,
+                   g_is_ch ? "CH" : "MBR",
+                   storage_manager_get_mslg_chunk_count());
+        } else {
+          ESP_LOGE(TAG, "Failed to store seq=%lu to MSLG: %s",
+                   payload.seq_num, esp_err_to_name(ret));
+        }
+      }
     }
 
     // ---- Storage monitoring ----
