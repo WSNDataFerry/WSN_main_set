@@ -1,0 +1,17 @@
+# Build output
+ms_node/build/
+
+# Log files
+logs/
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# ESP-IDF
+sdkconfig.old
