@@ -35,19 +35,19 @@ sleep 3
 
 export IDF_MONITOR_NO_COLORS=1
 
-script -q -c "idf.py -p /dev/ttyACM0 monitor --no-reset" > /home/punky/esp_1/esp_project/WSN_main_set/logs/out.log &
-PID1=$!
-script -q -c "idf.py -p /dev/ttyACM1 monitor --no-reset" > /home/punky/esp_1/esp_project/WSN_main_set/logs/out1.log &  
-PID2=$!
-script -q -c "idf.py -p /dev/ttyACM2 monitor --no-reset" > /home/punky/esp_1/esp_project/WSN_main_set/logs/out2.log &
-PID3=$!
-
-# script -q -c "idf.py -p /dev/ttyACM0 monitor " > /home/punky/esp_1/esp_project/WSN_main_set/logs/out.log &
+# script -q -c "idf.py -p /dev/ttyACM0 monitor --no-reset" > /home/punky/esp_1/esp_project/WSN_main_set/logs/out.log &
 # PID1=$!
-# script -q -c "idf.py -p /dev/ttyACM1 monitor " > /home/punky/esp_1/esp_project/WSN_main_set/logs/out1.log &  
+# script -q -c "idf.py -p /dev/ttyACM1 monitor --no-reset" > /home/punky/esp_1/esp_project/WSN_main_set/logs/out1.log &  
 # PID2=$!
-# script -q -c "idf.py -p /dev/ttyACM2 monitor " > /home/punky/esp_1/esp_project/WSN_main_set/logs/out2.log &
+# script -q -c "idf.py -p /dev/ttyACM2 monitor --no-reset" > /home/punky/esp_1/esp_project/WSN_main_set/logs/out2.log &
 # PID3=$!
+
+script -q -c "idf.py -p /dev/ttyACM0 monitor " > /home/punky/esp_1/esp_project/WSN_main_set/logs/out.log &
+PID1=$!
+script -q -c "idf.py -p /dev/ttyACM1 monitor " > /home/punky/esp_1/esp_project/WSN_main_set/logs/out1.log &  
+PID2=$!
+script -q -c "idf.py -p /dev/ttyACM2 monitor " > /home/punky/esp_1/esp_project/WSN_main_set/logs/out2.log &
+PID3=$!
 
 echo "NODE_1 PID: $PID1"
 echo "NODE_2 PID: $PID2"
