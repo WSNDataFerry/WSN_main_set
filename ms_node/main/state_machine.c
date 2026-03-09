@@ -103,29 +103,34 @@ typedef enum {
 static phase_t s_current_phase = PHASE_STELLAR;
 static uint64_t s_phase_start_ms = 0;
 static uint64_t s_last_schedule_send_ms = 0;   // Timestamp of last TDMA schedule send
-static int      s_schedule_sends_this_phase = 0; // Count of schedule sends this DATA phase
-// s_last_ch_store_ms and s_last_mbr_store_ms removed — storage moved to main loop (ms_node.c)
+static int s_schedule_sends_this_phase = 0; // Count of schedule sends this DATA phase
 
+// Duration for DATA phase after CH signal (ms)
+#define SYNC_DATA_PHASE_MS 20000
+
+// Tracks if we are in a synchronized DATA phase
+static bool s_data_phase_active = false;
+static uint64_t s_data_phase_end_ms = 0;
+
+// Called to enter DATA phase (from CH signal)
+void state_machine_enter_data_phase(void) {
+  s_current_phase = PHASE_DATA;
+  s_data_phase_active = true;
+  s_data_phase_end_ms = esp_timer_get_time() / 1000 + SYNC_DATA_PHASE_MS;
+  ESP_LOGI(TAG, "Synchronized DATA phase started (duration=%d ms)", SYNC_DATA_PHASE_MS);
+}
+
+// Called in main loop to update phase
 static void state_machine_update_phase(uint64_t now_ms) {
-  // Initialize phase start on first run
-  if (s_phase_start_ms == 0) {
-    s_phase_start_ms = now_ms;
+  if (s_data_phase_active) {
+    if (now_ms >= s_data_phase_end_ms) {
+      s_current_phase = PHASE_STELLAR;
+      s_data_phase_active = false;
+      ESP_LOGI(TAG, "DATA phase ended, reverting to STELLAR phase");
+    }
+    // else remain in DATA phase
   }
-
-  uint64_t elapsed = now_ms - s_phase_start_ms;
-  const uint64_t frame_len = STELLAR_PHASE_MS + DATA_PHASE_MS;
-
-  // Start a new superframe if we ran past the end
-  if (elapsed >= frame_len) {
-    s_phase_start_ms = now_ms;
-    elapsed = 0;
-  }
-
-  if (elapsed < STELLAR_PHASE_MS) {
-    s_current_phase = PHASE_STELLAR;
-  } else {
-    s_current_phase = PHASE_DATA;
-  }
+  // else remain in STELLAR phase until CH signal
 }
 
 /**
@@ -146,23 +151,8 @@ static void state_machine_update_phase(uint64_t now_ms) {
  * on the next call, perfectly synchronised with the CH.
  */
 void state_machine_sync_phase_from_epoch(int64_t epoch_us) {
-  (void)epoch_us; // Value is CH-boot-relative; we only use the receipt event.
-
-  uint64_t member_now_ms = (uint64_t)(esp_timer_get_time() / 1000LL);
-  // Set elapsed to exactly STELLAR_PHASE_MS so state_machine_update_phase()
-  // evaluates to PHASE_DATA immediately.
-  uint64_t new_phase_start_ms = member_now_ms - (uint64_t)STELLAR_PHASE_MS;
-
-  int64_t diff_ms = (int64_t)new_phase_start_ms - (int64_t)s_phase_start_ms;
-  // Apply only when the adjustment is significant (>500ms) to avoid repeated
-  // tiny re-syncs that could disrupt an in-progress send.
-  if (diff_ms < -500 || diff_ms > 500) {
-    ESP_LOGI("SM_SYNC",
-             "Phase sync: aligning to CH DATA entry "
-             "(elapsed=%u ms -> PHASE_DATA, diff=%lld ms)",
-             (unsigned)STELLAR_PHASE_MS, (long long)diff_ms);
-    s_phase_start_ms = new_phase_start_ms;
-  }
+  // On receiving CH signal, enter DATA phase for SYNC_DATA_PHASE_MS
+  state_machine_enter_data_phase();
 }
 
 const char *state_machine_get_state_name(void) {
@@ -286,9 +276,8 @@ void state_machine_run(void) {
     const char *role = (g_current_state == STATE_CH) ? "CH" :
                        (g_current_state == STATE_MEMBER) ? "MEMBER" : "OTHER";
 
-    // ESP-NOW is always initialised but only usable when the radio is NOT
-    // in BLE mode.  During STELLAR the radio is on BLE → ESP-NOW is idle.
-    const bool espnow_active = (s_current_phase == PHASE_DATA);
+    // ESP-NOW RX is always enabled; TX is only active in DATA phase
+    const bool espnow_tx_active = (s_current_phase == PHASE_DATA);
 
     if (s_current_phase == PHASE_DATA) {
       ESP_LOGI(TAG, "╔═══════════════════════════════════════════════════╗");
@@ -298,9 +287,8 @@ void state_machine_run(void) {
       ESP_LOGI(TAG, "║  BLE  RX (scan): %-8s  TX (adv): %-8s    ║",
                ble_scan ? "ACTIVE" : "INACTIVE",
                ble_adv  ? "ACTIVE" : "INACTIVE");
-      ESP_LOGI(TAG, "║  ESP-NOW RX: %-8s       TX: %-8s          ║",
-               espnow_active ? "ACTIVE" : "INACTIVE",
-               espnow_active ? "ACTIVE" : "INACTIVE");
+      ESP_LOGI(TAG, "║  ESP-NOW RX: ACTIVE       TX: %-8s          ║",
+               espnow_tx_active ? "ACTIVE" : "INACTIVE");
       ESP_LOGI(TAG, "║  MSLG chunks stored: %-5d                       ║", mslg_count);
       ESP_LOGI(TAG, "╚═══════════════════════════════════════════════════╝");
     } else {
@@ -311,9 +299,8 @@ void state_machine_run(void) {
       ESP_LOGI(TAG, "║  BLE  RX (scan): %-8s  TX (adv): %-8s    ║",
                ble_scan ? "ACTIVE" : "INACTIVE",
                ble_adv  ? "ACTIVE" : "INACTIVE");
-      ESP_LOGI(TAG, "║  ESP-NOW RX: %-8s       TX: %-8s          ║",
-               espnow_active ? "ACTIVE" : "INACTIVE",
-               espnow_active ? "ACTIVE" : "INACTIVE");
+      ESP_LOGI(TAG, "║  ESP-NOW RX: ACTIVE       TX: %-8s          ║",
+               espnow_tx_active ? "ACTIVE" : "INACTIVE");
       ESP_LOGI(TAG, "║  MSLG chunks stored: %-5d                       ║", mslg_count);
       ESP_LOGI(TAG, "╚═══════════════════════════════════════════════════╝");
     }
@@ -494,6 +481,11 @@ void state_machine_run(void) {
           // Grace period ended with no conflicts
           ch_assertion_verified = true;
           ESP_LOGI(TAG, "CH assertion verified - no conflicts detected");
+          // --- PATCH: Trigger DATA phase after grace period ---
+          if (s_current_phase == PHASE_STELLAR && !s_data_phase_active) {
+            ESP_LOGI(TAG, "CH: Triggering DATA phase after assertion grace period");
+            state_machine_enter_data_phase();
+          }
         }
       }
 

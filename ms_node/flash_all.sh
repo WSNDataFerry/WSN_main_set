@@ -20,7 +20,7 @@ sleep 1
 
 echo "Building firmware..."
 idf.py build
-sleep 1
+sleep 10
 
 for PORT in "${PORTS[@]}"; do
     echo "----------------------------------------"
@@ -33,7 +33,7 @@ echo "----------------------------------------"
 echo "All devices flashed successfully!"
 sleep 3
 
-export IDF_MONITOR_NO_COLORS=1
+# export IDF_MONITOR_NO_COLORS=1
 
 # script -q -c "idf.py -p /dev/ttyACM0 monitor --no-reset" > /home/punky/esp_1/esp_project/WSN_main_set/logs/out.log &
 # PID1=$!
