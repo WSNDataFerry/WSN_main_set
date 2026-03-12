@@ -1,4 +1,13 @@
-# Sensor Implementation & Testing Guide
+# Sensor Implementation & System Integration Guide
+
+## Overview
+
+The MS Node integrates **6 environmental sensors** for comprehensive environmental monitoring in delay-tolerant wireless sensor networks (WSNs). All sensors are continuously polled by the `app_main()` task, with readings cached in a mutex-protected mailbox and consumed during the DATA phase for storage and transmission.
+
+**Related Documentation:**
+- [DUAL_CORE_SENSOR_ARCHITECTURE.md](DUAL_CORE_SENSOR_ARCHITECTURE.md) — Task layout and producer-consumer model
+- [STELLAR_ALGORITHM.md](STELLAR_ALGORITHM.md) — How sensors feed STELLAR metrics (battery, link quality)
+- [TDMA_SCHEDULING.md](TDMA_SCHEDULING.md) — TDMA slots triggered when sensor data is ready
 
 ## Implemented Sensors
 

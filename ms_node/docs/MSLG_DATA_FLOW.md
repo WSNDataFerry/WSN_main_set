@@ -1,8 +1,15 @@
 # MSLG Data Flow Analysis — Code-Verified Behaviour
 
 > **Date:** March 2026  
-> **Scope:** Verified against `state_machine.c`, `esp_now_manager.c`, `storage_manager.c`  
+> **Scope:** Verified against `state_machine.c`, `esp_now_manager.c`, `storage_manager.c`, and STELLAR CH election  
 > **Cluster:** 3 nodes — CH (`3125565838`), MBR1 (`3125668638`), MBR2 (`3125683842`)
+
+## Quick Links
+
+- [STELLAR_ALGORITHM.md](STELLAR_ALGORITHM.md) — How CH is elected to manage the data pipeline
+- [TDMA_SCHEDULING.md](TDMA_SCHEDULING.md) — TDMA slot enforcement during DATA phase
+- [STORAGE_FORMAT.md](STORAGE_FORMAT.md) — MSLG chunk header and compression details
+- [DUAL_CORE_SENSOR_ARCHITECTURE.md](DUAL_CORE_SENSOR_ARCHITECTURE.md) — Sensor-mailbox producer-consumer model
 
 ---
 

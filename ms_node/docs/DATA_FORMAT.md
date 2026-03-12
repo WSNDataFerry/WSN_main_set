@@ -1,13 +1,23 @@
 # MS Node Data Storage Format
 
 ## Overview
-This document describes the data storage format used by MS (Main Set) sensor nodes for environmental data collection in a delay-tolerant network.
+
+This document describes the **MSLG** data format and storage mechanisms used by MS (Main Set) sensor nodes for environmental data collection in a **delay-tolerant wireless sensor network (WSN)**. 
+
+The system implements two-phase clustering with the **STELLAR algorithm** for autonomous cluster head election. Data flows through a **store-first pipeline**: nodes collect sensor readings locally, compress them into MSLG chunks on SPIFFS, and transmit to the cluster head (CH) during TDMA slots in the DATA phase.
+
+**Related Documentation:**
+- [STELLAR_ALGORITHM.md](STELLAR_ALGORITHM.md) — Multi-metric cluster head election
+- [TDMA_SCHEDULING.md](TDMA_SCHEDULING.md) — Time-division transmission scheduling
+- [MSLG_DATA_FLOW.md](MSLG_DATA_FLOW.md) — Detailed data pipeline architecture
 
 ## Storage Architecture
 - **File System**: SPIFFS on ESP32-S3 internal flash
 - **Partition Size**: 2MB (0x200000 bytes) at offset 0x310000
-- **File Path**: `/spiffs/samples.lz`
-- **Format**: Binary chunks with optional compression
+- **File Path**: `/spiffs/data.lz` (circular FIFO buffer)
+- **Format**: Binary chunks with optional miniz(deflate) compression
+- **Data Rate**: ~1 record per 2 seconds during normal operation (~43KB/day uncompressed, ~16KB compressed)
+- **Runtime**: ~1 week of data at 2-second sampling intervals
 
 ## Data Structure
 

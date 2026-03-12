@@ -1,8 +1,19 @@
-# STELLAR Protocol Timing Diagram
+# STELLAR Protocol Timing Diagram & Superframe Architecture
+
+## Quick Links
+
+- [STELLAR_ALGORITHM.md](STELLAR_ALGORITHM.md) — Multi-metric cluster head election math
+- [TDMA_SCHEDULING.md](TDMA_SCHEDULING.md) — Detailed TDMA slot mechanics and ESP-NOW communication
+- [DUAL_CORE_SENSOR_ARCHITECTURE.md](DUAL_CORE_SENSOR_ARCHITECTURE.md) — Why sensors run continuously and task timing
 
 ## Overview
 
-The STELLAR (Self-organizing Time-slotted Energy-efficient Low-latency Adaptive Routing) protocol uses a **dual-phase superframe** structure that alternates between BLE (Bluetooth Low Energy) communication for cluster management and ESP-NOW for sensor data transmission.
+The STELLAR (Secure Trust-Enhanced Lyapunov-optimised Leader Allocation for Resilient networks) protocol uses a **dual-phase superframe** structure that alternates between:
+
+1. **STELLAR Phase (0-20s):** BLE-based neighbor discovery and distributed cluster head (CH) election
+2. **DATA Phase (20-40s):** ESP-NOW-based TDMA data transmission and store-first reliability
+
+This temporal radio separation solves the fundamental constraint of ESP32-S3's **single shared 2.4 GHz radio** between BLE and WiFi/ESP-NOW.
 
 ---
 

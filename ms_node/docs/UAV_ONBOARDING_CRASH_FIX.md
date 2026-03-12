@@ -1,5 +1,11 @@
 # UAV Onboarding Crash Fix - Analysis Report
 
+## Quick Links
+
+- [STELLAR_ALGORITHM.md](STELLAR_ALGORITHM.md) — How cluster head is elected
+- [UAV_ONBOARDING_TIMING.md](UAV_ONBOARDING_TIMING.md) — Timing analysis and beacon timeout considerations
+- [TDMA_SCHEDULING.md](TDMA_SCHEDULING.md) — TDMA scheduling the CH uses when returning from onboarding
+
 ## 🚨 Issue Discovered
 
 **Problem:** ESP32 crashed during UAV onboarding sequence when transitioning from ESP-NOW to WiFi STA mode.

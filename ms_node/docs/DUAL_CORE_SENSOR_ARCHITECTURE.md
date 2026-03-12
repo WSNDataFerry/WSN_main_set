@@ -1,7 +1,7 @@
 # Dual-Core Sensor & Radio Architecture
 
 > **Date:** March 2026  
-> **Scope:** Verified against `ms_node.c`, `state_machine.c`, `metrics.c`, `storage_manager.c`  
+> **Scope:** Verified against `ms_node.c`, `state_machine.c`, `metrics.c`, `storage_manager.c`, and STELLAR election flow
 > **Platform:** ESP32-S3 (dual-core Xtensa LX7), ESP-IDF v5.3, FreeRTOS SMP
 
 ---
@@ -13,8 +13,9 @@
 3. [Producer-Consumer Model](#3-producer-consumer-model)
 4. [Superframe Phasing vs Sensor Sampling](#4-superframe-phasing-vs-sensor-sampling)
 5. [Why Sensors Run Continuously](#5-why-sensors-run-continuously)
-6. [Data Staleness Analysis](#6-data-staleness-analysis)
-7. [Code Path References](#7-code-path-references)
+6. [STELLAR Metrics & Sensor Coupling](#6-stellar-metrics--sensor-coupling)
+7. [Data Staleness Analysis](#7-data-staleness-analysis)
+8. [Code Path References](#8-code-path-references)
 
 ---
 
@@ -201,7 +202,73 @@ dedup layer in `esp_now_manager.c`.
 
 ---
 
-## 6. Data Staleness Analysis
+## 6. STELLAR Metrics & Sensor Coupling
+
+The **STELLAR algorithm** for cluster head election depends on real-time metrics that are directly derived from sensor data:
+
+### Metrics Used by STELLAR
+
+| Metric | Source | Sensor | Update Rate |
+|--------|--------|--------|------------|
+| **Battery %** | INA219 current monitor | Power sensor | 10s (via `metrics_task`) |
+| **Uptime** | ESP timer | System | Continuous (no sensor) |
+| **Trust Score** | PDR + HMAC + HSR | Network (not sensor) | 1s (via `metrics_task`) |
+| **Link Quality** | RSSI EWMA + PER | BLE receiver | Updated during BLE scan |
+
+### Why Continuous Sensor Sampling Matters for STELLAR
+
+During **STELLAR Phase** (BLE-only, no ESP-NOW), the **metrics_task** (priority 3) computes the node's STELLAR score and prepares the BLE score packet for broadcasting:
+
+```c
+// Called every 1 second during STELLAR phase
+void metrics_update_stellar_score(void) {
+    
+    // 1. Get battery from INA219 power sensor
+    float battery_pct = ina219_get_battery_percent();
+    
+    // 2. Validate against sensor data (ensure both systems agree)
+    // The sensor mailbox contains latest power readings
+    sensor_payload_t latest = metrics_get_sensor_data();
+    if (latest.power.bus_v < 2.8) {
+        battery_pct = 0.0;  // Safety: agree with sensor
+    }
+    
+    // 3. Compute STELLAR utility with current metrics
+    float stellar_score = election_stellar_score();
+    
+    // 4. Encode into BLE score packet
+    ble_score_packet_t pkt = {
+        .score = (uint32_t)(stellar_score * 10000),
+        .battery_pct = (uint8_t)battery_pct,
+        .uptime_norm = ...,
+        .trust = ...,
+        // ... send via BLE advertiser
+    };
+}
+```
+
+### Sensor-Mediated Election Stability
+
+Because sensors run **continuously** (even during STELLAR phase), the STELLAR scores computed at election time (seconds 10-20 of the STELLAR phase) reflect **fresh data** from seconds 5-20:
+
+```
+STELLAR Phase Timeline:
+t=0-5s:   Sensors read normally
+t=5-10s:  Sensors read normally + BLE scan begins collecting neighbor beacons
+t=10s:    ELECTION WINDOW OPENS
+          ├─ My battery reading: from t=5s (5s stale, acceptable)
+          ├─ Neighbor battery reading: from their last advertise (10-20s stale, also OK)
+          └─ Based on fresh data: STELLAR score is reliable
+
+t=10-20s: Continue reading sensors + collecting beacons
+          → Only latest reading used for election decision (at t=20s boundary)
+```
+
+**Result:** CH election is **not** based on stale data sampled weeks ago. It reflects current network conditions.
+
+---
+
+## 7. Data Staleness Analysis
 
 The **worst-case staleness** of a sensor reading consumed by the state machine
 depends on PME mode:

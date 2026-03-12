@@ -1,5 +1,21 @@
 # Data Storage Implementation
 
+## System Architecture Overview
+
+In the **STELLAR-based WSN**, data storage serves a critical role in the **store-first, then transmit** reliability pattern:
+
+1. **Sensor Collection (CONTINUOUS):** Every 2 seconds, app_main reads sensors and caches data in a shared mailbox
+2. **STELLAR Phase (0-20s):** Nodes broadcast STELLAR metrics via BLE and elect a cluster head (CH)
+3. **DATA Phase (20-40s):** 
+   - TDMA slots activate for transmission
+   - Member nodes write sensor data to SPIFFS first (MSLG format)
+   - Then transmit via ESP-NOW to CH
+   - CH broadcasts TDMA schedule and self-stores data
+4. **Burst Drain:** If SPIFFS accumulates old data, nodes send decompressed chunks to CH
+5. **UAV Offload:** When UAV arrives, CH uploads all accumulated data via WiFi
+
+**Key Principle:** Even if transmission fails, data is safe on local storage. Burst drain ensures eventual delivery.
+
 ## Features Implemented
 
 ### 1. CRC32 Integrity Checks

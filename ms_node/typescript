@@ -1,0 +1,1217 @@
+Script started on 2026-03-11 17:34:17+05:30 [COMMAND="idf.py -p /dev/ttyACM0 monitor " <not executed on terminal>]
+Executing action: monitor
+Running idf_monitor in directory /home/punky/esp_1/esp_project/WSN_main_set/ms_node
+Executing "/home/punky/.espressif/python_env/idf5.3_py3.14_env/bin/python /home/punky/esp/esp-idf/tools/idf_monitor.py -p /dev/ttyACM0 -b 115200 --toolchain-prefix xtensa-esp32s3-elf- --target esp32s3 --revision 0 /home/punky/esp_1/esp_project/WSN_main_set/ms_node/build/ms_node.elf -m '/home/punky/.espressif/python_env/idf5.3_py3.14_env/bin/python' '/home/punky/esp/esp-idf/tools/idf.py' '-p' '/dev/ttyACM0'"...
+[0;33m--- esp-idf-monitor 1.9.0 on /dev/ttyACM0 115200[0m
+[0;33m--- Quit: Ctrl+] | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H[0m
+[0;32mI (132) esp_image: segment 1: paddr=00042400 vaddr=3fca3b00 sizeESP-ROM:esp32s3-20210327[0m
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40381932
+[0m--- 0x40381932: [0;33mesp_cpu_wait_for_intr[0m[0m at [0;32m/home/punky/esp/esp-idf/components/esp_hw_support/cpu.c[0m[0m:[1;31m64[0m
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2810,len:0x1510
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xce8
+load:0x403cb700,len:0x2eb8
+entry 0x403c8918
+[0;32mI (26) boot: ESP-IDF v5.3.4 2nd stage bootloader[0m
+[0;32mI (27) boot: compile time Mar 11 2026 17:30:18[0m
+[0;32mI (27) boot: Multicore bootloader[0m
+[0;32mI (27) boot: chip revision: v0.2[0m
+[0;32mI (30) boot: efuse block revision: v1.3[0m
+[0;32mI (33) boot.esp32s3: Boot SPI Speed : 80MHz[0m
+[0;32mI (37) boot.esp32s3: SPI Mode       : DIO[0m
+[0;32mI (41) boot.esp32s3: SPI Flash Size : 16MB[0m
+[0;32mI (45) boot: Enabling RNG early entropy source...[0m
+[0;32mI (49) boot: Partition Table:[0m
+[0;32mI (52) boot: ## Label            Usage          Type ST Offset   Length[0m
+[0;32mI (58) boot:  0 nvs              WiFi data        01 02 00009000 00006000[0m
+[0;32mI (65) boot:  1 phy_init         RF data          01 01 0000f000 00001000[0m
+[0;32mI (71) boot:  2 factory          factory app      00 00 00010000 00200000[0m
+[0;32mI (78) boot:  3 storage          Unknown data     01 82 00210000 00c00000[0m
+[0;32mI (84) boot: End of partition table[0m
+[0;32mI (87) esp_image: segment 0: paddr=00010020 vaddr=3c0f0020 size=323d8h (205784) map[0m
+[0;32mI (132) esp_image: segment 1: paddr=00042400 vaddr=3fca3b00 size=05c18h ( 23576) load[0m
+[0;32mI (138) esp_image: segment 2: paddr=00048020 vaddr=40374000 size=07ff8h ( 32760) load[0m
+[0;32mI (146) esp_image: segment 3: paddr=00050020 vaddr=42000020 size=e9118h (954648) map[0m
+[0;32mI (320) esp_image: segment 4: paddr=00139140 vaddr=4037bff8 size=17a84h ( 96900) load[0m
+[0;32mI (343) esp_image: segment 5: paddr=00150bcc vaddr=50000000 size=00004h (     4) load[0m
+[0;32mI (343) esp_image: segment 6: paddr=00150bd8 vaddr=600fe000 size=0006ch (   108) load[0m
+[0;32mI (359) boot: Loaded app from partition at offset 0x10000[0m
+[0;32mI (359) boot: Disabling RNG early entropy source...[0m
+[0;32mI (369) octal_psram: vendor id    : 0x0d (AP)[0m
+[0;32mI (369) octal_psram: dev id       : 0x02 (generation 3)[0m
+[0;32mI (369) octal_psram: density      : 0x03 (64 Mbit)[0m
+[0;32mI (371) octal_psram: good-die     : 0x01 (Pass)[0m
+[0;32mI (376) octal_psram: Latency      : 0x01 (Fixed)[0m
+[0;32mI (380) octal_psram: VCC          : 0x01 (3V)[0m
+[0;32mI (384) octal_psram: SRF          : 0x01 (Fast Refresh)[0m
+[0;32mI (389) octal_psram: BurstType    : 0x01 (Hybrid Wrap)[0m
+[0;32mI (394) octal_psram: BurstLen     : 0x01 (32 Byte)[0m
+[0;32mI (398) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)[0m
+[0;32mI (404) octal_psram: DriveStrength: 0x00 (1/1)[0m
+[0;32mI (408) esp_psram: Found 8MB PSRAM device[0m
+[0;32mI (411) esp_psram: Speed: 40MHz[0m
+[0;32mI (414) cpu_start: Multicore app[0m
+[0;32mI (1148) esp_psram: SPI SRAM memory test OK[0m
+[0;32mI (1157) cpu_start: Pro cpu start user code[0m
+[0;32mI (1157) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (1157) app_init: Application information:[0m
+[0;32mI (1158) app_init: Project name:     ms_node[0m
+[0;32mI (1161) app_init: App version:      9c8d4bf-dirty[0m
+[0;32mI (1166) app_init: Compile time:     Mar 11 2026 17:30:02[0m
+[0;32mI (1171) app_init: ELF file SHA256:  e6e6fbf90...[0m
+[0;32mI (1176) app_init: ESP-IDF:          v5.3.4[0m
+[0;32mI (1179) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (1183) efuse_init: Max chip rev:     v0.99 [0m
+[0;32mI (1187) efuse_init: Chip rev:         v0.2[0m
+[0;32mI (1191) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (1198) heap_init: At 3FCB40B0 len 00035660 (213 KiB): RAM[0m
+[0;32mI (1203) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM[0m
+[0;32mI (1208) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM[0m
+[0;32mI (1213) heap_init: At 600FE06C len 00001F7C (7 KiB): RTCRAM[0m
+[0;32mI (1219) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator[0m
+[0;32mI (1227) spi_flash: detected chip: generic[0m
+[0;32mI (1229) spi_flash: flash io: dio[0m
+[0;32mI (1233) sleep: Configure to isolate all GPIO pins in sleep state[0m
+[0;32mI (1238) sleep: Enable automatic switching of GPIO sleep configuration[0m
+[0;32mI (1245) coexist: coex firmware version: a13b09d[0m
+[0;32mI (1249) coexist: coexist rom version e7ae62f[0m
+[0;32mI (1254) main_task: Started on CPU0[0m
+[0;32mI (1264) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations[0m
+[0;32mI (1264) main_task: Calling app_main()[0m
+[0;32mI (1284) AUTH: Authentication system initialized[0m
+[0;32mI (1284) main: Early ID Init: node_id=3125565838[0m
+[0;32mI (1284) METRICS: Loaded uptime: 180 seconds[0m
+[0;32mI (1284) METRICS: Restored trust from NVS: 0.912[0m
+[0;32mI (1284) METRICS: Seeded sensor_data: node_id=3125565838, timestamp_ms=67[0m
+[0;32mI (1294) METRICS: Metrics system initialized with STELLAR extensions[0m
+[0;32mI (1304) NEIGHBOR: Neighbor manager initialized[0m
+[0;32mI (1304) ELECTION: Election system initialized (STELLAR=1)[0m
+[0;32mI (2004) PERSISTENCE: Persistence system initialized[0m
+[0;32mI (2004) BLE: Initializing BLE[0m
+[0;32mI (2004) BLE: sizeof(ble_score_packet_t) = 20[0m
+[0;32mI (2004) BLE: MY NODE ID: 3125565838[0m
+[0;32mI (2004) BLE_INIT: BT controller compile version [2edb0b0][0m
+[0;32mI (2014) BLE_INIT: Using main XTAL as clock source[0m
+[0;32mI (2014) BLE_INIT: Feature Config, ADV:1, BLE_50:1, DTM:1, SCAN:1, CCA:0, SMP:1, CONNECT:1[0m
+[0;32mI (2024) BLE_INIT: Bluetooth MAC: 10:20:ba:4c:59:8e[0m
+[0;32mI (2024) phy_init: phy_version 701,f4f1da3a,Mar  3 2025,15:50:10[0m
+[0;32mI (2074) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(0)[0m
+[0;32mI (2094) BLE: NimBLE port initialized[0m
+[0;32mI (2094) BLE: Starting BLE host task[0m
+[0;32mI (2094) BLE: BLE host task started[0m
+[0;32mI (2094) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (2094) NimBLE: Failed to restore IRKs from store; status=8[0m
+
+[0;32mI (2104) BLE: BLE host synchronized[0m
+[0;32mI (2104) BLE: BLE initialization complete (waiting for sync)[0m
+[0;32mI (2114) LED_MANAGER: Initializing LED Manager on GPIO 48 (High Contrast Mode)[0m
+[0;32mI (2114) gpio: GPIO[48]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0 [0m
+[0;32mI (2124) logger: Node ID: 10:20:BA:4C:59:8C (0x1020BA4C598C)[0m
+[0;33mW (2134) logger: SPIFFS corrupted, formatting...[0m
+[0;32mI (2834) logger: SPIFFS formatted successfully[0m
+[0;32mI (2834) logger: SPIFFS total=11558801 used=10291[0m
+[0;32mI (2834) STORAGE: Initializing SPIFFS...[0m
+[0;33mW (2834) STORAGE: SPIFFS already mounted by Logger, skipping registration[0m
+[0;32mI (2834) STORAGE: Partition size: total: 11558801, used: 10291[0m
+[0;32mI (2844) STORAGE: Node ID: 10:20:BA:4C:59:8C (0x1020BA4C598C)[0m
+[0;32mI (2854) main: Network interface initialized[0m
+[0;32mI (2854) ESP_NOW: Initializing ESP-NOW...[0m
+[0;32mI (2854) pp: pp rom version: e7ae62f[0m
+[0;32mI (2864) net80211: net80211 rom version: e7ae62f[0m
+[0;32mI (2874) wifi:wifi driver task: 3fcd849c, prio:23, stack:6656, core=0[0m
+[0;32mI (2874) wifi:wifi firmware version: d2d8792[0m
+[0;32mI (2874) wifi:wifi certification version: v7.0[0m
+[0;32mI (2874) wifi:config NVS flash: enabled[0m
+[0;32mI (2884) wifi:config nano formating: disabled[0m
+[0;32mI (2884) wifi:Init data frame dynamic rx buffer num: 32[0m
+[0;32mI (2894) wifi:Init static rx mgmt buffer num: 5[0m
+[0;32mI (2894) wifi:Init management short buffer num: 32[0m
+[0;32mI (2904) wifi:Init dynamic tx buffer num: 32[0m
+[0;32mI (2904) wifi:Init static tx FG buffer num: 2[0m
+[0;32mI (2904) wifi:Init static rx buffer size: 1600[0m
+[0;32mI (2914) wifi:Init static rx buffer num: 10[0m
+[0;32mI (2914) wifi:Init dynamic rx buffer num: 32[0m
+[0;32mI (2924) wifi_init: rx ba win: 6[0m
+[0;32mI (2924) wifi_init: accept mbox: 6[0m
+[0;32mI (2924) wifi_init: tcpip mbox: 32[0m
+[0;32mI (2924) wifi_init: udp mbox: 6[0m
+[0;32mI (2934) wifi_init: tcp mbox: 6[0m
+[0;32mI (2934) wifi_init: tcp tx win: 5760[0m
+[0;32mI (2934) wifi_init: tcp rx win: 5760[0m
+[0;32mI (2944) wifi_init: tcp mss: 1440[0m
+[0;32mI (2944) wifi_init: WiFi IRAM OP enabled[0m
+[0;32mI (2944) wifi_init: WiFi RX IRAM OP enabled[0m
+[0;32mI (2954) wifi:mode : sta (10:20:ba:4c:59:8c)[0m
+[0;32mI (2954) wifi:enable tsf[0m
+[0;32mI (2954) wifi:Set ps type: 0, coexist: 0[0m
+
+[0;32mI (2964) ESPNOW: espnow [version: 1.0] init[0m
+[0;32mI (2964) ESP_NOW: ESP-NOW initialized on channel 1[0m
+[0;32mI (2974) RF_RX: Initializing RF Receiver on GPIO 21[0m
+[0;32mI (2974) gpio: GPIO[21]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0 [0m
+[0;32mI (2984) STATE: State machine initialized: node_id=3125565838, MAC=1020ba4c598e[0m
+[0;32mI (3044) sensor_config: No saved config found, using defaults (first boot)[0m
+[0;32mI (3044) main: Sensor config: audio_interval=300000ms, env_interval=60000ms[0m
+[0;32mI (3044) main: Node ID: 10:20:BA:4C:59:8C[0m
+[0;32mI (3044) main: Storage: 10291/11558801 bytes (0.1% used)[0m
+[0;32mI (3074) main: wakeup cause: power-on or reset[0m
+[0;32mI (3074) battery: ADC calibration: curve fitting enabled[0m
+[0;32mI (3074) battery: Battery ADC init: unit=0 ch=3 atten=3 divider_ratio=7.83 samples=8[0m
+[0;32mI (3074) pme: PME init batt=0% (fake enabled tick=1000ms drop=1%)[0m
+[0;32mI (3084) main: Creating STELLAR cluster tasks...[0m
+[0;32mI (3084) main: State machine task started[0m
+[0;32mI (3084) STATE: Boot & self-init[0m
+[0;32mI (3094) main: Metrics task started[0m
+[0;32mI (3094) METRICS: [STELLAR] Lyapunov weights: B=0.299 U=0.202 T=0.299 L=0.200, V=0.00092, Conv=1[0m
+[0;32mI (3104) METRICS: [STELLAR] Pareto rank=0/0, Centrality=0.000[0m
+[0;32mI (3104) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.000 u_T=0.978 u_L=0.707, base=0.733, κ=0.667, ρ=0.000, Ψ=0.4888[0m
+[0;32mI (3124) main: STATUS: State=INIT, Role=NODE, CH=0, Size=0[0m
+[0;32mI (3124) main: Serial: CONFIG key=value or CLUSTER for report[0m
+[0;32mI (3154) i2c_bus: Initializing I2C on SDA=8 SCL=9[0m
+[1;31mE (3154) i2c: i2c_set_timeout(969): i2c timing value error[0m
+[0;33mW (3174) sensors: BME280 not responding on 0x76[0m
+[0;33mW (3174) main: BME280 init attempt 1/3 failed: ESP_ERR_NOT_FOUND[0m
+[0;32mI (3194) STATE: Boot & self-init[0m
+[0;32mI (3294) STATE: Boot & self-init[0m
+[0;32mI (3294) STATE: State transition: INIT -> DISCOVER[0m
+[0;32mI (3394) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (3394) NimBLE: disc_mode=2[0m
+[0;32mI (3394) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (3394) NimBLE: [0m
+
+[0;32mI (3394) BLE: BLE  NimBLE: duration=forever[0m
+[0;32mI (3410) NimBLE: [0m
+
+[0;32mI (3420) BLE: BLE scanning started[0m
+[0;33mW (3660) sensors: BME280 not responding on 0x76[0m
+[0;33mW (3660) main: BME280 init attempt 2/3 failed: ESP_ERR_NOT_FOUND[0m
+[0;32mI (3920) LED_MANAGER: LED applied state: 1[0m
+[0;32mI (4110) METRICS: [STELLAR] Lyapunov weights: B=0.298 U=0.204 T=0.298 L=0.200, V=0.00076, Conv=1[0m
+[0;32mI (4110) METRICS: [STELLAR] Pareto rank=0/0, Centrality=0.000[0m
+[0;32mI (4110) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.000 u_T=0.971 u_L=0.707, base=0.729, κ=0.667, ρ=0.000, Ψ=0.4862[0m
+[0;32mI (4120) main: STATUS: State=DISCOVER, Role=NODE, CH=0, Size=0[0m
+[0;33mW (4160) sensors: BME280 not responding on 0x76[0m
+[0;33mW (4160) main: BME280 init attempt 3/3 failed: ESP_ERR_NOT_FOUND[0m
+[0;33mW (4160) main: BME280 init skipped after 3 retries[0m
+[0;33mW (4160) sensors: AHT21 I2C write failed: ESP_FAIL[0m
+[0;33mW (4160) sensors: AHT21 init command failed[0m
+[0;33mW (4170) main: AHT21 init attempt 1/3 failed: ESP_FAIL[0m
+[0;32mI (4420) BLE: Advertising packet: node_id=3125683842, seq=2, HMAC=a9, packet_size=20[0m
+[0;32mI (4420) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (4420) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (4420) NimBLE: disc_mode=2[0m
+[0;32mI (4430) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (4440) NimBLE: [0m
+
+[0;33mW (4440) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (4440) BLE: Received packet HMAC: 61, mfg_data_len=20, packet_size=20[0m
+[0;33mW (4450) BLE: HMAC check: computed=61, received=61, diff=0, node_id=3125668638, seq_num=2[0m
+[0;32mI (4460) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.700[0m
+[0;32mI (4460) BLE: Discovered neighbor: node_id=3125668638, score=0.39, rssi=-30, seq=2[0m
+[0;32mI (4470) METRICS: [METRICS] Trust Update Input: Rep=0.500, Current PDR=0.900, Current HSR=0.700[0m
+[0;32mI (4480) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.39, trust=0.50, seq=2[0m
+[0;32mI (4490) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-30, score=0.39, trust=0.50, seq=2[0m
+[0;32mI (4500) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 0 entries[0m
+[0;32mI (4510) NEIGHBOR: [DEBUG] Node 3125668638 not found in table, attempting to add as new neighbor[0m
+[0;32mI (4520) NEIGHBOR: [DEBUG] Table has space (0 < 10), adding node 3125668638 at index 0[0m
+[0;32mI (4520) NEIGHBOR: [DEBUG] ESP-NOW peer registered successfully for node 3125668638[0m
+[0;32mI (4530) NEIGHBOR: Added neighbor: node_id=3125668638, RSSI=-30, Seq=2[0m
+[0;32mI (4540) NEIGHBOR: [DEBUG] Successfully added neighbor 3125668638, new table size: 1, verified=1, trust=0.50[0m
+[0;32mI (4550) NEIGHBOR: [DEBUG] VERIFICATION: Node 3125668638 successfully found in table after addition[0m
+[0;32mI (4560) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (4660) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (4670) sensors: AHT21 I2C write failed: ESP_FAIL[0m
+[0;33mW (4670) sensors: AHT21 init command failed[0m
+[0;33mW (4670) main: AHT21 init attempt 2/3 failed: ESP_FAIL[0m
+[0;33mW (4720) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (4720) BLE: Received packet HMAC: b3, mfg_data_len=20, packet_size=20[0m
+[0;33mW (4720) BLE: HMAC check: computed=b3, received=b3, diff=0, node_id=3125565838, seq_num=2[0m
+[0;32mI (4730) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.820[0m
+[0;32mI (4730) BLE: Discovered neighbor: node_id=3125565838, score=0.49, rssi=-31, seq=2[0m
+[0;32mI (4740) METRICS: [METRICS] Trust Update Input: Rep=0.720, Current PDR=0.900, Current HSR=0.820[0m
+[0;32mI (4750) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125565838, score=0.49, trust=0.72, seq=2[0m
+[0;32mI (4760) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125565838, rssi=-31, score=0.49, trust=0.72, seq=2[0m
+[0;32mI (4770) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125565838 in table of 1 entries[0m
+[0;32mI (4780) NEIGHBOR: [DEBUG] Node 3125565838 not found in table, attempting to add as new neighbor[0m
+[0;32mI (4790) NEIGHBOR: [DEBUG] Table has space (1 < 10), adding node 3125565838 at index 1[0m
+[0;32mI (4790) NEIGHBOR: [DEBUG] ESP-NOW peer registered successfully for node 3125565838[0m
+[0;32mI (4800) NEIGHBOR: Added neighbor: node_id=3125565838, RSSI=-31, Seq=2[0m
+[0;32mI (4810) NEIGHBOR: [DEBUG] Successfully added neighbor 3125565838, new table size: 2, verified=1, trust=0.72[0m
+[0;32mI (4820) NEIGHBOR: [DEBUG] VERIFICATION: Node 3125565838 successfully found in table after addition[0m
+[0;32mI (4830) BLE: [DEBUG] Post-update check: node_id=3125565838 found_in_table=1[0m
+[0;33mW (4830) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (4840) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (4870) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (4930) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (5050) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (5070) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (5070) BLE: Received packet HMAC: 61, mfg_data_len=20, packet_size=20[0m
+[0;33mW (5070) BLE: HMAC check: computed=61, received=61, diff=0, node_id=3125668638, seq_num=2[0m
+[0;32mI (5080) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.892[0m
+[0;32mI (5090) BLE: Discovered neighbor: node_id=3125668638, score=0.39, rssi=-29, seq=2[0m
+[0;32mI (5090) METRICS: [METRICS] Trust Update Input: Rep=0.500, Current PDR=0.900, Current HSR=0.892[0m
+[0;32mI (5100) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.39, trust=0.50, seq=2[0m
+[0;32mI (5110) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-29, score=0.39, trust=0.50, seq=2[0m
+[0;32mI (5120) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (5130) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (5140) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.090[0m
+[0;32mI (5150) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (5150) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (5160) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (5170) METRICS: [STELLAR] Lyapunov weights: B=0.298 U=0.205 T=0.298 L=0.199, V=0.00080, Conv=1[0m
+[0;32mI (5170) METRICS: [STELLAR] Pareto rank=2/2, Centrality=0.200[0m
+[0;32mI (5180) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.000 u_T=0.843 u_L=0.919, base=0.732, κ=0.714, ρ=0.020, Ψ=0.5428[0m
+[0;32mI (5190) main: STATUS: State=DISCOVER, Role=NODE, CH=0, Size=2[0m
+[0;33mW (5200) sensors: AHT21 I2C write failed: ESP_FAIL[0m
+[0;33mW (5200) sensors: AHT21 init command failed[0m
+[0;33mW (5210) main: AHT21 init attempt 3/3 failed: ESP_FAIL[0m
+[0;33mW (5210) main: AHT21 init skipped after 3 retries[0m
+[0;33mW (5210) sensors: ENS160 not responding for PART_ID read: ESP_FAIL[0m
+[0;33mW (5220) main: ENS160 init attempt 1/3 failed: ESP_ERR_NOT_FOUND[0m
+[0;33mW (5250) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (5250) BLE: Received packet HMAC: b3, mfg_data_len=20, packet_size=20[0m
+[0;33mW (5260) BLE: HMAC check: computed=b3, received=b3, diff=0, node_id=3125565838, seq_num=2[0m
+[0;32mI (5260) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.935[0m
+[0;32mI (5270) BLE: Disco5565838, score=0.49, rssi=-38, seq=2[0m
+[0;32mI (5274) METRICS: [METRICS] Trust Update Input: Rep=0.720, Current PDR=0.910, Current HSR=0.935[0m
+[0;32mI (5284) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125565838, score=0.49, trust=0.72, seq=2[0m
+[0;32mI (5294) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125565838, rssi=-38, score=0.49, trust=0.72, seq=2[0m
+[0;32mI (5304) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125565838 in table of 2 entries[0m
+[0;32mI (5314) NEIGHBOR: [DEBUG] Found existing neighbor 3125565838 at index 1, updating[0m
+[0;32mI (5324) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.081[0m
+[0;32mI (5324) NEIGHBOR: [DEBUG] Updated existing neighbor 3125565838, returning[0m
+[0;32mI (5334) BLE: [DEBUG] Post-update check: node_id=3125565838 found_in_table=1[0m
+[0;32mI (5444) BLE: Advertising packet: node_id=3125668638, seq=3, HMAC=64, packet_size=20[0m
+[0;32mI (5444) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;33mW (5454) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (5554) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (5694) sensors: ENS160 not responding for PART_ID read: ESP_FAIL[0m
+[0;33mW (5694) main: ENS160 init attempt 2/3 failed: ESP_ERR_NOT_FOUND[0m
+[0;32mI (6164) METRICS: [STELLAR] Lyapunov weights: B=0.297 U=0.206 T=0.298 L=0.199, V=0.00062, Conv=1[0m
+[0;32mI (6164) METRICS: [STELLAR] Pareto rank=1/2, Centrality=0.200[0m
+[0;32mI (6164) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.000 u_T=0.925 u_L=0.932, base=0.758, κ=0.714, ρ=0.010, Ψ=0.5513[0m
+[0;32mI (6174) main: STATUS: State=DISCOVER, Role=NODE, CH=0, Size=2[0m
+[0;33mW (6194) sensors: ENS160 not responding for PART_ID read: ESP_FAIL[0m
+[0;33mW (6194) main: ENS160 init attempt 3/3 failed: ESP_ERR_NOT_FOUND[0m
+[0;33mW (6194) main: ENS160 init skipped after 3 retries[0m
+[0;33mW (6194) sensors: GY-271 reset failed: ESP_FAIL[0m
+[0;33mW (6204) main: GY-271 init attempt 1/3 failed: ESP_FAIL[0m
+[0;32mI (6444) BLE: Advertising packet: node_id=3125668638, seq=4, HMAC=4d, packet_size=20[0m
+[0;32mI (6444) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (6444) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (6444) NimBLE: disc_mode=2[0m
+[0;32mI (6454) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (6454) NimBLE: [0m
+
+[0;33mW (6564) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (6574) BLE: Received packet HMAC: c9, mfg_data_len=20, packet_size=20[0m
+[0;33mW (6574) BLE: HMAC check: computed=c9, received=c9, diff=0, node_id=3125683842, seq_num=4[0m
+[0;32mI (6584) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.961[0m
+[0;32mI (6584) BLE: Discovered neighbor: node_id=3125683842, score=0.51, rssi=-27, seq=4[0m
+[0;32mI (6594) METRICS: [METRICS] Trust Update Input: Rep=0.790, Current PDR=0.919, Current HSR=0.961[0m
+[0;32mI (6604) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125683842, score=0.51, trust=0.79, seq=4[0m
+[0;32mI (6614) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125683842, rssi=-27, score=0.51, trust=0.79, seq=4[0m
+[0;32mI (6624) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125683842 in table of 2 entries[0m
+[0;32mI (6634) NEIGHBOR: [DEBUG] Found existing neighbor 3125683842 at index 0, updating[0m
+[0;32mI (6634) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.123[0m
+[0;32mI (6644) NEIGHBOR: [DEBUG] Updated existing neighbor 3125683842, returning[0m
+[0;32mI (6654) BLE: [DEBUG] Post-update check: node_id=3125683842 found_in_table=1[0m
+[0;33mW (6654) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (6704) sensors: GY-271 reset failed: ESP_FAIL[0m
+[0;33mW (6704) main: GY-27125668638 found_in_table=1[0m
+[0;33mW (6740) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (6740) sensors: GY-271 reset failed: ESP_FAIL[0m
+[0;33mW (6740) main: GY-271 init attempt 2/3 failed: ESP_FAIL[0m
+[0;33mW (6850) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (6850) BLE: Received packet HMAC: bd, mfg_data_len=20, packet_size=20[0m
+[0;33mW (6850) BLE: HMAC check: computed=bd, received=bd, diff=0, node_id=3125565838, seq_num=4[0m
+[0;32mI (6860) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.977[0m
+[0;32mI (6860) BLE: Discovered neighbor: node_id=3125565838, score=0.51, rssi=-33, seq=4[0m
+[0;32mI (6870) METRICS: [METRICS] Trust Update Input: Rep=0.860, Current PDR=0.877, Current HSR=0.977[0m
+[0;32mI (6880) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125565838, score=0.51, trust=0.86, seq=4[0m
+[0;32mI (6890) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125565838, rssi=-33, score=0.51, trust=0.86, seq=4[0m
+[0;32mI (6900) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125565838 in table of 2 entries[0m
+[0;32mI (6910) NEIGHBOR: [DEBUG] Found existing neighbor 3125565838 at index 1, updating[0m
+[0;32mI (6910) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.161[0m
+[0;32mI (6920) NEIGHBOR: [DEBUG] Updated existing neighbor 3125565838, returning[0m
+[0;32mI (6930) BLE: [DEBUG] Post-update check: node_id=3125565838 found_in_table=1[0m
+[0;33mW (6940) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (7050) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (7140) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (7140) BLE: Received packet HMAC: 4d, mfg_data_len=20, packet_size=20[0m
+[0;33mW (7140) BLE: HMAC check: computed=4d, received=4d, diff=0, node_id=3125668638, seq_num=4[0m
+[0;32mI (7150) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.986[0m
+[0;32mI (7160) BLE: Discovered neighbor: node_id=3125668638, score=0.46, rssi=-29, seq=4[0m
+[0;32mI (7170) METRICS: [METRICS] Trust Update Input: Rep=0.830, Current PDR=0.839, Current HSR=0.986[0m
+[0;32mI (7170) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.46, trust=0.83, seq=4[0m
+[0;32mI (7180) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-29, score=0.46, trust=0.83, seq=4[0m
+[0;32mI (7190) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (7200) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (7210) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.145[0m
+[0;32mI (7220) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (7220) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (7230) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (7240) METRICS: [STELLAR] Lyapunov weights: B=0.296 U=0.208 T=0.297 L=0.199, V=0.00056, Conv=1[0m
+[0;32mI (7250) METRICS: [STELLAR] Pareto rank=2/2, Centrality=0.200[0m
+[0;32mI (7250) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.000 u_T=0.958 u_L=0.978, base=0.775, κ=0.714, ρ=0.020, Ψ=0.5734[0m
+[0;32mI (7260) main: STATUS: State=DISCOVER, Role=NODE, CH=0, Size=2[0m
+[0;33mW (7270) sensors: GY-271 reset failed: ESP_FAIL[0m
+[0;33mW (7270) main: GY-271 init attempt 3/3 failed: ESP_FAIL[0m
+[0;33mW (7280) main: GY-271 init skipped after 3 retries[0m
+[0;33mW (7280) sensors: INA219 not responding on 0x40[0m
+[0;33mW (7290) main: INA219 init attempt 1/3 failed: ESP_ERR_NOT_FOUND[0m
+[0;33mW (7350) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (7350) BLE: Received packet HMAC: bd, mfg_data_len=20, packet_size=20[0m
+[0;33mW (7350) BLE: HMAC check: computed=bd, received=bd, diff=0, node_id=3125565838, seq_num=4[0m
+[0;32mI (7360) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.992[0m
+[0;32mI (7360) BLE: Discovered neighbor: node_id=3125565838, score=0.51, rssi=-33, seq=4[0m
+[0;32mI (7370) METRICS: [METRICS] Trust Update Input: Rep=0.860, Current PDR=0.855, Current HSR=0.992[0m
+[0;32mI (7380) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125565838, score=0.51, trust=0.86, seq=4[0m
+[0;32mI (7390) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125565838, rssi=-33, score=0.51, trust=0.86, seq=4[0m
+[0;32mI (7400) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125565838 in table of 2 entries[0m
+[0;32mI (7410) NEIGHBOR: [DEBUG] Found existing neighbor 3125565838 at index 1, updating[0m
+[0;32mI (7410) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.130[0m
+[0;32mI (7420) NEIGHBOR: [DEBUG] Updated existing neighbor 3125565838, returning[0m
+[0;32mI (7430) BLE: [DEBUG] Post-update check: node_id=3125565838 found_in_table=1[0m
+[0;33mW (7440) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (7480) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (7540) BLE: Advertising packet: node_id=3125683842, seq=5, HMAC=2a, packet_size=20[0m
+[0;32mI (7540) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;33mW (7550) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (7740) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (7790) sensors: INA219 not responding on 0x40[0m
+[0;33mW (7790) main: INA219 init attempt 2/3 failed: ESP_ERR_NOT_FOUND[0m
+[0;32mI (8270) METRICS: [STELLAR] Lyapunov weights: B=0.296 U=0.210 T=0.296 L=0.198, V=0.00046, Conv=1[0m
+[0;32mI (8270) METRICS: [STELLAR] Pareto rank=2/2, Centrality=0.200[0m
+[0;32mI (8270) METRICS: [STELLAR] Score components: u_B=1.000 u_U=0.000 u_T=0.965 u_L=0.980, base=0.776, κ=0.714, ρ=0.020, Ψ=0.5744[0m
+[0;32mI (8280) main: STATUS: State=DISCOVER, Role=NODE, CH=0, Size=2[0m
+[0;33mW (8290) sensors: INA219 not responding on 0x40[0m
+[0;33mW (8290) main: INA219 init attempt 3/3 failed: ESP_ERR_NOT_FOUND[0m
+[0;33mW (8300) main: INA219 init skipped after 3 retries[0m
+[0;32mI (8300) inmp441: Initialized: rate=16000Hz bits=16 pins(WS=5,SCK=6,SD=7)[0m
+[0;32mI (8310) sensors: Running sensors_raw_sanity_check...[0m
+[0;32mI (8310) inmp441: INMP441 I2S check: initialized and ready (rate=16000Hz, bits=16)[0m
+[0;32mI (8320) sensors: Presence -> BME280:0 AHT21:0 ENS160:0 GY-271:0 INA219:0 INMP441:1[0m
+[0;32mI (8330) inmp441: INMP441 I2S check: initialized and ready (rate=16000Hz, bits=16)[0m
+[0;32mI (8330) sensors: sensors_raw_sanity_check done.[0m
+[0;32mI (8340) STATE: State transition: DISCOVER -> CANDIDATE[0m
+[0;32mI (8340) ELECTION: Election window reset[0m
+[0;32mI (8550) main: Main loop running (state machine + metrics active)[0m
+[0;32mI (8590) battery: BAT: avg_raw=1552 adc_pin=1.366V battery=10.70V pct=47% (samples=8/8)[0m
+[0;32mI (8590) main: BAT vadc=1365mV vbat=10695mV pct=47%[0m
+[0;32mI (8590) main: PME batt=47% mode=POWER_SAVE[0m
+[0;32mI (8590) main: Smart Sleep: Waiting 5000 ms (BLE Active)[0m
+[0;32mI (8920) LED_MANAGER: LED applied state: 2[0m
+[0;32mI (9290) METRICS: [STELLAR] Lyapunov weights: B=0.295 U=0.211 T=0.296 L=0.198, V=0.00052, Conv=1[0m
+[0;32mI (9290) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (9290) METRICS: [STELLAR] Score components: u_B=0.705 u_U=0.000 u_T=0.965 u_L=0.980, base=0.688, κ=0.714, ρ=0.000, Ψ=0.4912[0m
+[0;32mI (9300) main: STATUS: State=CANDIDATE, Role=NODE, CH=0, Size=2[0m
+[0;32mI (9450) BLE: Advertising packet: node_id=3125683842, seq=6, HMAC=d8, packet_size=20[0m
+[0;32mI (9450) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (9450) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (9450) NimBLE: disc_mode=2[0m
+[0;32mI (9460) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (9460) NimBLE: [0m
+
+[0;33mW (9530) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (9530) BLE: Received packet HMAC: e2, mfg_data_len=20, packet_size=20[0m
+[0;33mW (9530) BLE: HMAC check: computed=e2, received=e2, diff=0, node_id=3125565838, seq_num=6[0m
+[0;32mI (9540) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.995[0m
+[0;32mI (9550) BLE: Discovered neighbor: node_id=3125565838, score=0.54, rssi=-34, seq=6[0m
+[0;32mI (9550) METRICS: [METRICS] Trust Update Input: Rep=0.890, Current PDR=0.870, Current HSR=0.995[0m
+[0;32mI (9560) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125565838, score=0.54, trust=0.89, seq=6[0m
+[0;32mI (9570) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125565838, rssi=-34, score=0.54, trust=0.89, seq=6[0m
+[0;32mI (9580) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125565838 in table of 2 entries[0m
+[0;32mI (9590) NEIGHBOR: [DEBUG] Found existing neighbor 3125565838 at index 1, updating[0m
+[0;32mI (9600) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.167[0m
+[0;32mI (9610) NEIGHBOR: [DEBUG] Updated existing neighbor 3125565838, returning[0m
+[0;32mI (9610) BLE: [DEBUG] Post-update check: node_id=3125565838 found_in_table=1[0m
+[0;33mW (9620) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (9630) BLE: Received packet HMAC: a0, mfg_data_len=20, packet_size=20[0m
+[0;33mW (9630) BLE: HMAC check: computed=a0, received=a0, diff=0, node_id=3125668638, seq_num=6[0m
+[0;32mI (9640) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.997[0m
+[0;32mI (9650) BLE: Discovered neighbor: node_id=3125668638, score=0.49, rssi=-26, seq=6[0m
+[0;32mI (9650) METRICS: [METRICS] Trust Update Input: Rep=0.890, Current PDR=0.833, Current HSR=0.997[0m
+[0;32mI (9660) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.49, trust=0.89, seq=6[0m
+[0;32mI (9670) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-26, score=0.49, trust=0.89, seq=6[0m
+[0;32mI (9680) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (9690) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (9700) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.200[0m
+[0;32mI (9710) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (9710) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (9720) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (9730) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (9740) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (9860) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (9940) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (10060) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (10060) BLE: Received packet HMAC: e2, mfg_data_len=20, packet_size=20[0m
+[0;33mW (10060) BLE: HMAC check: computed=e2, received=e2, diff=0, node_id=3125565838, seq_num=6[0m
+[0;32mI (10070) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.998[0m
+[0;32mI (10070) BLE: Discovered neighbor: node_id=3125565838, score=0.54, rssi=-31, seq=6[0m
+[0;32mI (10080) METRICS: [METRICS] Trust Update Input: Rep=0.890, Current PDR=0.800, Current HSR=0.998[0m
+[0;32mI (10090) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125565838, score=0.54, trust=0.89, seq=6[0m
+[0;32mI (10100) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125565838, rssi=-31UG] Calling neighbor_manager_update for node_id=3125668638, score=0.49, trust=0.89, seq=6[0m
+[0;32mI (9914) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-80, score=0.49, trust=0.89, seq=6[0m
+[0;32mI (9924) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (9934) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (9944) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.180[0m
+[0;32mI (9954) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (9954) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (10074) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (10084) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (10154) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (10264) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (10264) BLE: Received packet HMAC: d8, mfg_data_len=20, packet_size=20[0m
+[0;33mW (10274) BLE: HMAC check: computed=d8, received=d8, diff=0, node_id=3125683842, seq_num=6[0m
+[0;32mI (10274) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=0.999[0m
+[0;32mI (10284) BLE: Discovered neighbor: node_id=3125683842, score=0.53, rssi=-32, seq=6[0m
+[0;32mI (10294) METRICS: [METRICS] Trust Update Input: Rep=0.880, Current PDR=0.820, Current HSR=0.999[0m
+[0;32mI (10304) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125683842, score=0.53, trust=0.88, seq=6[0m
+[0;32mI (10314) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125683842, rssi=-32, score=0.53, trust=0.88, seq=6[0m
+[0;32mI (10324) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125683842 in table of 2 entries[0m
+[0;32mI (10324) NEIGHBOR: [DEBUG] Found existing neighbor 3125683842 at index 1, updating[0m
+[0;32mI (10334) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.162[0m
+[0;32mI (10344) NEIGHBOR: [DEBUG] Updated existing neighbor 3125683842, returning[0m
+[0;32mI (10354) BLE: [DEBUG] Post-update check: node_id=3125683842 found_in_table=1[0m
+[0;33mW (10354) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (10364) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (10474) BLE: Advertising packet: node_id=3125565838, seq=7, HMAC=63, packet_size=20[0m
+[0;32mI (10474) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (10504) METRICS: [STELLAR] Lyapunov weights: B=0.294 U=0.212 T=0.296 L=0.198, V=0.00043, Conv=1[0m
+[0;32mI (10504) METRICS: [STELLAR] Pareto rank=1/2, Centrality=0.200[0m
+[0;32mI (10504) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.975 u_L=0.975, base=0.691, κ=0.714, ρ=0.010, Ψ=0.5037[0m
+[0;32mI (10514) main: STATUS: State=CANDIDATE, Role=NODE, CH=0, Size=2[0m
+[0;32mI (11474) BLE: Advertising packet: node_id=3125565838, seq=8, HMAC=c1, packet_size=20[0m
+[0;32mI (11474) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (11474) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (11474) NimBLE: disc_mode=2[0m
+[0;32mI (11484) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (11484) NimBLE: [0m
+
+[0;32mI (11524) METRICS: [STELLAR] Lyapunov weights: B=0.294 U=0.213 T=0.295 L=0.198, V=0.00035, Conv=1[0m
+[0;32mI (11524) METRICS: [STELLAR] Pareto rank=1/2, Centrality=0.200[0m
+[0;32mI (11524) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.975 u_L=0.975, base=0.690, κ=0.714, ρ=0.010, Ψ=0.5031[0m
+[0;32mI (11534) main: STATUS: State=CANDIDATE, Role=NODE, CH=0, Size=2[0m
+[0;33mW (11574) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (11574) BLE: Received packet HMAC: 0c, mfg_dRep=0.900, Current PDR=0.838, Current HSR=0.999[0m
+[0;32mI (11590) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125565838, score=0.52, trust=0.90, seq=8[0m
+[0;32mI (11600) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125565838, rssi=-35, score=0.52, trust=0.90, seq=8[0m
+[0;32mI (11610) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125565838 in table of 2 entries[0m
+[0;32mI (11620) NEIGHBOR: [DEBUG] Found existing neighbor 3125565838 at index 1, updating[0m
+[0;32mI (11630) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.196[0m
+[0;32mI (11630) NEIGHBOR: [DEBUG] Updated existing neighbor 3125565838, returning[0m
+[0;32mI (11640) BLE: [DEBUG] Post-update check: node_id=3125565838 found_in_table=1[0m
+[0;33mW (11740) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (11740) BLE: Received packet HMAC: e4, mfg_data_len=20, packet_size=20[0m
+[0;33mW (11750) BLE: HMAC check: computed=e4, received=e4, diff=0, node_id=3125668638, seq_num=8[0m
+[0;32mI (11760) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (11760) BLE: Discovered neighbor: node_id=3125668638, score=0.47, rssi=-26, seq=8[0m
+[0;32mI (11770) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.804, Current HSR=1.000[0m
+[0;32mI (11780) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.47, trust=0.90, seq=8[0m
+[0;32mI (11790) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-26, score=0.47, trust=0.90, seq=8[0m
+[0;32mI (11800) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (11810) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (11810) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.226[0m
+[0;32mI (11820) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (11830) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (11840) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (11950) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (11960) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (12030) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (12150) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (12160) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (12160) BLE: Received packet HMAC: c1, mfg_data_len=20, packet_size=20[0m
+[0;33mW (12170) BLE: HMAC check: computed=c1, received=c1, diff=0, node_id=3125565838, seq_num=8[0m
+[0;32mI (12170) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (12180) BLE: Discovered neighbor: node_id=3125565838, score=0.52, rssi=-35, seq=8[0m
+[0;32mI (12190) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.774, Current HSR=1.000[0m
+[0;32mI (12200) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125565838, score=0.52, trust=0.90, seq=8[0m
+[0;32mI (12210) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125565838, rssi=-35, score=0.52, trust=0.90, seq=8[0m
+[0;32mI (12220) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125565838 in table of 2 entries[0m
+[0;32mI (12220) NEIGHBOR: [DEBUG] Found existing neighbor 3125565838 at index 1, updating[0m
+[0;32mI (12230) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.204[0m
+[0;32mI (12240) NEIGHBOR: [DEBUG] Updated existing neighbor 3125565838, returning[0m
+[0;32mI (12250) BLE: [DEBUG] Post-update check: node_id=3125565838 found_in_table=1[0m
+[0;33mW (12260) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (12350) METRICS: [STELLAR] Lyapunov weights: B=0.293 U=0.214 T=0.0;32mI (12234) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125683842 in table of 2 entries[0m
+[0;32mI (12244) NEIGHBOR: [DEBUG] Found existing neighbor 3125683842 at index 1, updating[0m
+[0;32mI (12244) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.204[0m
+[0;32mI (12254) NEIGHBOR: [DEBUG] Updated existing neighbor 3125683842, returning[0m
+[0;32mI (12264) BLE: [DEBUG] Post-update check: node_id=3125683842 found_in_table=1[0m
+[0;33mW (12294) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (12294) BLE: Received packet HMAC: e4, mfg_data_len=20, packet_size=20[0m
+[0;33mW (12294) BLE: HMAC check: computed=e4, received=e4, diff=0, node_id=3125668638, seq_num=8[0m
+[0;32mI (12304) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (12314) BLE: Discovered neighbor: node_id=3125668638, score=0.47, rssi=-36, seq=8[0m
+[0;32mI (12314) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.796, Current HSR=1.000[0m
+[0;32mI (12324) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.47, trust=0.90, seq=8[0m
+[0;32mI (12334) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-36, score=0.47, trust=0.90, seq=8[0m
+[0;32mI (12344) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (12354) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (12364) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.183[0m
+[0;32mI (12374) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (12374) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (12384) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (12394) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (12494) BLE: Advertising packet: node_id=3125565838, seq=9, HMAC=b7, packet_size=20[0m
+[0;32mI (12494) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (12544) METRICS: [STELLAR] Lyapunov weights: B=0.293 U=0.214 T=0.295 L=0.198, V=0.00028, Conv=1[0m
+[0;32mI (12544) METRICS: [STELLAR] Pareto rank=1/2, Centrality=0.200[0m
+[0;32mI (12544) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.976 u_L=0.972, base=0.689, κ=0.714, ρ=0.010, Ψ=0.5024[0m
+[0;32mI (12554) main: STATUS: State=CANDIDATE, Role=NODE, CH=0, Size=2[0m
+[0;32mI (13494) BLE: Advertising packet: node_id=3125565838, seq=10, HMAC=ef, packet_size=20[0m
+[0;32mI (13494) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (13494) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (13494) NimBLE: disc_mode=2[0m
+[0;32mI (13504) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (13514) NimBLE: [0m
+
+[0;32mI (13564) METRICS: [STELLAR] Lyapunov weights: B=0.292 U=0.215 T=0.295 L=0.197, V=0.00022, Conv=1[0m
+[0;32mI (13564) METRICS: [STELLAR] Pareto rank=1/2, Centrality=0.200[0m
+[0;32mI (13564) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.976 u_L=0.972, base=0.689, κ=0.714, ρ=0.010, Ψ=0.5019[0m
+[0;33mW (13564) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (13584) BLE: Received packet HMAC: 9d, mfg_data_len=20, packet_size=20[0m
+[0;33mW (13594) BLE: HMAC check: computed=9d, received=9d, diff=0, node_id=3125668638, seq_num=10[0m
+[0;32mI (13594) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (13604) BLE: Discovered neighbor: node_id=3125668638, score=0.46, rssi=-36, seq=10[0m
+[0;32mI (13614) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.817, Current HSR=1.000[0m
+[0;32mI (13624) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.46, trust=0.90, seq=10[0m
+[0;32mI (13634) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-36, score=0.46, trust=0.90, seq=10[0m
+[0;32mI (13644) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (13644) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (13654) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.215[0m
+[0;32mI (13664) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (13674) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (13674) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (13684) BLE: Received packet HMAC: 34, mfg_data_len=20, packet_size=20[0m
+[0;33mW (13694) BLE: HMAC check: computed=34, received=34, diff=0, node_id=3125683842, seq_num=10[0m
+[0;32mI (13694) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (13704) BLE: Discovered neighbor: node_id=3125683842, score=0.51, rssi=-32, seq=10[0m
+[0;32mI (13714) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.785, Current HSR=1.000[0m
+[0;32mI (13724) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125683842, score=0.51, trust=0.90, seq=10[0m
+[0;32mI (13734) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125683842, rssi=-32, score=0.51, trust=0.90, seq=10[0m
+[0;32mI (13744) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125683842 in table of 2 entries[0m
+[0;32mI (13754) NEIGHBOR: [DEBUG] Found existing neighbor 3125683842 at index 1, updating[0m
+[0;32mI (13754) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.244[0m
+[0;32mI (13764) NEIGHBOR: [DEBUG] Updated existing neighbor 3125683842, returning[0m
+[0;32mI (13774) BLE: [DEBUG] Post-update check: node_id=3125683842 found_in_table=1[0m
+[0;33mW (13784) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (13784) main: STATUS: State=CANDIDATE, Role=NODE, CH=0, Size=2[0m
+[0;32mI (13834) battery: BAT: avg_raw=1565 adc_pin=1.368V battery=10.71V pct=48% (samples=8/8)[0m
+[0;32mI (13834) main: BAT vadc=1368mV vbat=10711mV pct=48%[0m
+[0;32mI (13834) main: PME batt=48% mode=POWER_SAVE[0m
+[0;32mI (13834) main: Smart Sleep: Waiting 5000 ms (BLE Active)[0m
+[0;33mW (14054) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (14064) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (14194) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (14194) BLE: Received packet HMAC: 9d, mfg_data_len=20, packet_size=20[0m
+[0;33mW (14194) BLE: HMAC check: computed=9d, received=9d, diff=0, node_id=3125668638, seq_num=10[0m
+[0;32mI (14204) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (14204) BLE: Discovered neighbor: node_id=3125668638, score=0.46, rssi=-34, seq=10[0m
+[0;32mI (14214) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.756, Current HSR=1.000[0m
+[0;32mI (14224) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.46, trust=0.90, seq=10[0m
+[0;32mI (14234) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-34, score=0.46, trust=0.90, seq=10[0m
+[0;32mI (14244) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (14254) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (14264) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.219[0m
+[0;32mI (14264) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (14274) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (14404) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (14584) BLE: Advertising packet: node_id=3125565838, seq=11, HMAC=9f, packet_sizset=2, total_len=22[0m
+[0;32mI (15550) METRICS: [STELLAR] Lyapunov weights: B=0.291 U=0.216 T=0.295 L=0.198, V=0.00014, Conv=1[0m
+[0;32mI (15550) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (15550) METRICS: [STELLAR] Score components: u_B=0.764 u_U=0.000 u_T=0.977 u_L=0.966, base=0.701, κ=0.714, ρ=0.000, Ψ=0.5009[0m
+[0;32mI (15560) BLE: Advertising packet: node_id=3125683842, seq=12, HMAC=d2, packet_size=20[0m
+[0;32mI (15570) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (15580) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (15580) NimBLE: disc_mode=2[0m
+[0;32mI (15580) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (15590) NimBLE: [0m
+
+[0;32mI (15590) main: STATUS: State=CANDIDATE, Role=NODE, CH=0, Size=2[0m
+[0;33mW (15650) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (15650) BLE: Received packet HMAC: 89, mfg_data_len=20, packet_size=20[0m
+[0;33mW (15660) BLE: HMAC check: computed=89, received=89, diff=0, node_id=3125668638, seq_num=12[0m
+[0;32mI (15660) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (15670) BLE: Discovered neighbor: node_id=3125668638, score=0.46, rssi=-28, seq=12[0m
+[0;32mI (15680) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.776, Current HSR=1.000[0m
+[0;32mI (15690) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.46, trust=0.90, seq=12[0m
+[0;32mI (15700) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-28, score=0.46, trust=0.90, seq=12[0m
+[0;32mI (15710) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (15710) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (15720) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.252[0m
+[0;32mI (15730) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (15740) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (15740) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (15750) BLE: Received packet HMAC: fa, mfg_data_len=20, packet_size=20[0m
+[0;33mW (15760) BLE: HMAC check: computed=fa, received=fa, diff=0, node_id=3125565838, seq_num=12[0m
+[0;32mI (15770) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (15770) BLE: Discovered neighbor: node_id=3125565838, score=0.51, rssi=-33, seq=12[0m
+[0;32mI (15780) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.748, Current HSR=1.000[0m
+[0;32mI (15790) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125565838, score=0.51, trust=0.90, seq=12[0m
+[0;32mI (15800) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125565838, rssi=-33, score=0.51, trust=0.90, seq=12[0m
+[0;32mI (15810) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125565838 in table of 2 entries[0m
+[0;32mI (15820) NEIGHBOR: [DEBUG] Found existing neighbor 3125565838 at index 1, updating[0m
+[0;32mI (15820) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.277[0m
+[0;32mI (15830) NEIGHBOR: [DEBUG] Updated existing neighbor 3125565838, returning[0m
+[0;32mI (15840) BLE: [DEBUG] Post-update check: node_id=3125565838 found_in_table=1[0m
+[0;33mW (15850) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (15880) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (15960) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (15980) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (16040) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (16160) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22
+[0;33mW (15964) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (15994) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (16194) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (16304) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (16304) BLE: Received packet HMAC: 89, mfg_data_len=20, packet_size=20[0m
+[0;33mW (16304) BLE: HMAC check: computed=89, received=89, diff=0, node_id=3125668638, seq_num=12[0m
+[0;32mI (16314) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (16314) BLE: Discovered neighbor: node_id=3125668638, score=0.46, rssi=-36, seq=12[0m
+[0;32mI (16324) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.727, Current HSR=1.000[0m
+[0;32mI (16334) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.46, trust=0.90, seq=12[0m
+[0;32mI (16344) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-36, score=0.46, trust=0.90, seq=12[0m
+[0;32mI (16354) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (16364) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (16374) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.245[0m
+[0;32mI (16374) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (16384) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (16404) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (16404) BLE: Received packet HMAC: d2, mfg_data_len=20, packet_size=20[0m
+[0;33mW (16404) BLE: HMAC check: computed=d2, received=d2, diff=0, node_id=3125683842, seq_num=12[0m
+[0;32mI (16414) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (16424) BLE: Discovered neighbor: node_id=3125683842, score=0.51, rssi=-32, seq=12[0m
+[0;32mI (16424) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.755, Current HSR=1.000[0m
+[0;32mI (16434) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125683842, score=0.51, trust=0.90, seq=12[0m
+[0;32mI (16444) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125683842, rssi=-32, score=0.51, trust=0.90, seq=12[0m
+[0;32mI (16454) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125683842 in table of 2 entries[0m
+[0;32mI (16464) NEIGHBOR: [DEBUG] Found existing neighbor 3125683842 at index 1, updating[0m
+[0;32mI (16474) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.221[0m
+[0;32mI (16484) NEIGHBOR: [DEBUG] Updated existing neighbor 3125683842, returning[0m
+[0;32mI (16484) BLE: [DEBUG] Post-update check: node_id=3125683842 found_in_table=1[0m
+[0;33mW (16504) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (16594) BLE: Advertising packet: node_id=3125565838, seq=13, HMAC=87, packet_size=20[0m
+[0;32mI (16594) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (16914) METRICS: [STELLAR] Lyapunov weights: B=0.291 U=0.217 T=0.295 L=0.197, V=0.00011, Conv=1[0m
+[0;32mI (16914) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (16914) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.971 u_L=0.966, base=0.685, κ=0.714, ρ=0.000, Ψ=0.4890[0m
+[0;32mI (16924) main: STATUS: State=CANDIDATE, Role=NODE, CH=0, Size=2[0m
+[0;33mW (17574) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (17574) BLE: Received packet HMAC: b2, mfg_data_len=20, packet_size=20[0m
+[0;33mW (17574) BLE: HMAC check: computed=b2, received=b2, diff=0, node_id=3125668638, seq_num=14[0m
+[0;32mI (17584) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (17594) BLE: Discovered neighbor: node_id=3125668638, score=0.46, rssi=-35, seq=14[0m
+[IDATE, Role=NODE, CH=0, Size=2[0m
+[0;32mI (17650) BLE: Advertising packet: node_id=3125683842, seq=14, HMAC=40, packet_size=20[0m
+[0;32mI (17650) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (17650) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (17660) NimBLE: disc_mode=2[0m
+[0;32mI (17660) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (17670) NimBLE: [0m
+
+[0;33mW (17760) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (17760) BLE: Received packet HMAC: b2, mfg_data_len=20, packet_size=20[0m
+[0;33mW (17760) BLE: HMAC check: computed=b2, received=b2, diff=0, node_id=3125668638, seq_num=14[0m
+[0;32mI (17770) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (17780) BLE: Discovered neighbor: node_id=3125668638, score=0.46, rssi=-26, seq=14[0m
+[0;32mI (17790) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.776, Current HSR=1.000[0m
+[0;32mI (17790) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.46, trust=0.90, seq=14[0m
+[0;32mI (17800) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-26, score=0.46, trust=0.90, seq=14[0m
+[0;32mI (17810) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (17820) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (17830) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.252[0m
+[0;32mI (17840) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (17840) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (17880) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (17880) BLE: Received packet HMAC: 55, mfg_data_len=20, packet_size=20[0m
+[0;33mW (17890) BLE: HMAC check: computed=55, received=55, diff=0, node_id=3125565838, seq_num=14[0m
+[0;32mI (17890) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (17900) BLE: Discovered neighbor: node_id=3125565838, score=0.50, rssi=-33, seq=14[0m
+[0;32mI (17910) METRICS: [METRICS] Trust Update Input: Rep=0.890, Current PDR=0.748, Current HSR=1.000[0m
+[0;32mI (17920) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125565838, score=0.50, trust=0.89, seq=14[0m
+[0;32mI (17930) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125565838, rssi=-33, score=0.50, trust=0.89, seq=14[0m
+[0;32mI (17940) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125565838 in table of 2 entries[0m
+[0;32mI (17940) NEIGHBOR: [DEBUG] Found existing neighbor 3125565838 at index 1, updating[0m
+[0;32mI (17950) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.276[0m
+[0;32mI (17960) NEIGHBOR: [DEBUG] Updated existing neighbor 3125565838, returning[0m
+[0;32mI (17970) BLE: [DEBUG] Post-update check: node_id=3125565838 found_in_table=1[0m
+[0;33mW (17970) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (17980) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (18080) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (18150) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (18170) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (18290) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (18350) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (18390) ELECTION: ========================================[0m
+[0;32mI (18390) ELECTION: Starting STELLAR CH Election[0m
+[0;32mI (18390) ELECTION: ========================================[0m
+[0;32mI (18390) METRICS: [STELLAR] Lyapunov weights: B=0.290 U=0.218 T=0.295 L=0.198, V=0.00006, Conv=1[0m
+[0;32mI (18400) ELECTION: [Phase 1] Computed utility values for 3 candidates[0m
+[0;32mI (18400) ELECTION:   node_3125683842: u=[0.764, 0.000, 0.970, 0.958][0m
+[0;32mI (18410) ELECTION:   node_3125668638: u=[0.559, 0.000, 0.972, 0.970][0m
+[0;32mI (18420) ELECTION:   node_3125565838: u=[0.714, 0.000, 0.966, 0.954][0m
+[0;32mI (18420) ELECTION: [Phase 2] Computing Pareto frontier[0m
+[0;32mI (18430) ELECTION:   Pareto member: node_3125683842 (dominates 1 nodes)[0m
+[0;32mI (18430) ELECTION:   Pareto member: node_3125668638 (dominates 0 nodes)[0m
+[0;32mI (18440) ELECTION: [Phase 2] Pareto frontier contains 2 nodes[0m
+[0;32mI (18450) METRICS: [STELLAR] Score components: u_B=0.764 u_U=0.000 u_T=0.970 u_L=0.958, base=0.697, κ=0.989, ρ=0.010, Ψ=0.6992[0m
+[0;32mI (18460) METRICS: [STELLAR] Score components: u_B=0.559 u_U=0.000 u_T=0.972 u_L=0.970, base=0.640, κ=0.909, ρ=0.000, Ψ=0.5820[0m
+[0;33mW (18470) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (18480) BLE: Received packet HMAC: b2, mfg_data_len=20, packet_size=20[0m
+[0;33mW (18480) BLE: HMAC check: computed=b2, received=b2, diff=0, node_id=3125668638, seq_num=14[0m
+[0;32mI (18490) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (18500) BLE: Discovered neighbor: node_id=3125668638, score=0.46, rssi=-30, seq=14[0m
+[0;32mI (18500) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.724, Current HSR=1.000[0m
+[0;32mI (18510) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.46, trust=0.90, seq=14[0m
+[0;32mI (18520) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-30, score=0.46, trust=0.90, seq=14[0m
+[0;32mI (18530) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (18540) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (18550) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.249[0m
+[0;32mI (18560) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (18560) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;33mW (18570) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (18580) BLE: Received packet HMAC: 55, mfg_data_len=20, packet_size=20[0m
+[0;33mW (18580) BLE: HMAC check: computed=55, received=55, diff=0, node_id=3125565838, seq_num=14[0m
+[0;32mI (18590) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (18600) BLE: Discovered neighbor: node_id=3125565838, score=0.50, rssi=-33, seq=14[0m
+[0;32mI (18610) METRICS: [METRICS] Trust Update Input: Rep=0.890, Current PDR=0.751, Current HSR=1.000[0m
+[0;32mI (18610) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125565838, score=0.50, trust=0.89, seq=14[0m
+[0;32mI (18620) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125565838, rssi=-33, score=0.50, trust=0.89, seq=14[0m
+[0;32mI (18630) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125565838 in table of 2 entries[0m
+[0;32mI (18640) NEIGHBOR: [DEBUG] Found existing neighbor 3125565838 at index 1, updating[0m
+[0;32mI (18650) METRICS: [METRICS] BLE Reception: Success=1, Fail=0, BatchPER=0.00, New PER_EWMA=0.224[0m
+[0;32mI (18660) NEIGHBOR: [DEBUG] Updated existing neighbor 3125565838, returning[0m
+[0;32mI (18670) BLE: [DEBUG] Post-update check: node_id=3125565838 found_in_table=1[0m
+[0;32mI (18670) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.966 u_L=0.954, base=0.680, κ=0.909, ρ=0.000, Ψ=0.6185[0m
+[0;32mI (18680) ELECTION: [Phase 3] Nash Bargaining selection[0m
+[0;33mW (18690) ELECTION: [Phase 3] Nash bargaining failed, using max STELLAR score from Pareto[0m
+[0;33mW (18690) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (18700) ELECTION: =======================================mI (18534) ELECTION: STELLAR Election Complete[0m
+[0;32mI (18534) ELECTION: Winner: node_3125565838 (self=1)[0m
+[0;32mI (18544) ELECTION: ========================================[0m
+[0;32mI (18544) ELECTION:   Candidate: node_3125565838, Ψ=0.6787, Pareto=1, Dom=0, κ=0.99[0m
+[0;32mI (18554) ELECTION:   Candidate: node_3125668638, Ψ=0.5819, Pareto=1, Dom=0, κ=0.80[0m
+[0;32mI (18564) ELECTION:   Candidate: node_3125683842, Ψ=0.6335, Pareto=1, Dom=0, κ=0.80[0m
+[0;32mI (18564) STATE: State transition: CANDIDATE -> CH[0m
+[0;33mW (18604) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (18674) STATE: CH assertion grace period started (checking for conflicts)[0m
+[0;32mI (18874) BLE: Advertising packet: node_id=3125565838, seq=15, HMAC=e7, packet_size=20[0m
+[0;32mI (18874) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (18954) METRICS: [STELLAR] Lyapunov weights: B=0.290 U=0.218 T=0.295 L=0.197, V=0.00004, Conv=1[0m
+[0;32mI (18954) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (18954) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.969 u_L=0.966, base=0.683, κ=0.714, ρ=0.000, Ψ=0.4881[0m
+[0;32mI (18964) main: STATUS: State=CH, Role=CH, CH=0, Size=2[0m
+[0;32mI (19014) battery: BAT: avg_raw=1562 adc_pin=1.366V battery=10.70V pct=47% (samples=8/8)[0m
+[0;32mI (19014) main: BAT vadc=1365mV vbat=10695mV pct=47%[0m
+[0;32mI (19014) main: PME batt=47% mode=POWER_SAVE[0m
+[0;32mI (19034) STORAGE: MSLG chunk written: RAW 156 bytes | CRC32=0x6E0A640A[0m
+[0;32mI (19034) main: Stored seq=3 to MSLG (role=CH) | chunks: 51[0m
+[0;32mI (19044) main: Smart Sleep: Waiting 5000 ms (BLE Active)[0m
+[0;32mI (19134) LED_MANAGER: LED applied state: 3[0m
+[0;33mW (19814) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (19814) BLE: Received packet HMAC: d9, mfg_data_len=20, packet_size=20[0m
+[0;33mW (19824) BLE: HMAC check: computed=d9, received=d9, diff=0, node_id=3125683842, seq_num=16[0m
+[0;32mI (19824) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (19834) BLE: Discovered neighbor: node_id=3125683842, score=0.50, rssi=-33, seq=16[0m
+[0;32mI (19844) METRICS: [METRICS] Trust Update Input: Rep=0.890, Current PDR=0.778, Current HSR=1.000[0m
+[0;32mI (19854) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125683842, score=0.50, trust=0.89, seq=16[0m
+[0;32mI (19864) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125683842, rssi=-33, score=0.50, trust=0.89, seq=16[0m
+[0;32mI (19874) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125683842 in table of 2 entries[0m
+[0;32mI (19874) NEIGHBOR: [DEBUG] Found existing neighbor 3125683842 at index 1, updating[0m
+[0;32mI (19884) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.250[0m
+[0;32mI (19894) NEIGHBOR: [DEBUG] Updated existing neighbor 3125683842, returning[0m
+[0;32mI (19904) BLE: [DEBUG] Post-update check: node_id=3125683842 found_in_table=1[0m
+[0;33mW (19904) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (19914) BLE: Received packet HMAC: eb, mfg_data_len=20, packet_size=20[0m
+[0;33mW (19924) BLE: HMAC check: computed=eb, received=eb, diff=0, node_id=3125668638, seq_num=16[0m
+[0;32mI (19934) METRICS: [METRICS] HMAC Update: Success=1, New HSR_EWMA=1.000[0m
+[0;32mI (19934) BLE: Discovered neighbor: node_id=3125668638, score=0.46, rssi=-36, seq=16[0m
+[0;32mI (19944) METRICS: [METRICS] Trust Update Input: Rep=0.900, Current PDR=0.750, Current HSR=1.000[0m
+[0;32mI (19954) BLE: [DEBUG] Calling neighbor_manager_update for node_id=3125668638, score=0.46, trust=0.90, seq=16[0m
+[0;32mI (19964) NEIGHBOR: [DEBUG] neighbor_manager_update called: node_id=3125668638, rssi=-36, score=0.46, trust=0.90, seq=16[0m
+[0;32mI (19974) NEIGHBOR: [DEBUG] Searching for existing neighbor 3125668638 in table of 2 entries[0m
+[0;32mI (19984) NEIGHBOR: [DEBUG] Found existing neighbor 3125668638 at index 0, updating[0m
+[0;32mI (19984) METRICS: [METRICS] BLE Reception: Success=1, Fail=1, BatchPER=0.50, New PER_EWMA=0.275[0m
+[0;32mI (19994) NEIGHBOR: [DEBUG] Updated existing neighbor 3125668638, returning[0m
+[0;32mI (20004) BLE: [DEBUG] Post-update check: node_id=3125668638 found_in_table=1[0m
+[0;32mI (20014) BLE: Advertising packet: node_id=3125565838, seq=16, HMAC=81, packet_size=20[0m
+[0;33mW (20014) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (20024) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (20034) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (20034) NimBLE: disc_mode=2[0m
+[0;32mI (20034) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (20044) NimBLE: [0m
+
+[0;32mI (20054) ELECTION: CH conflict: TIED Score, I have lower ID. Staying.[0m
+[0;32mI (20054) METRICS: [STELLAR] Lyapunov weights: B=0.290 U=0.218 T=0.295 L=0.197, V=0.00003, Conv=1[0m
+[0;32mI (20064) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (20064) METRICS: [STELLAR] Score components: u_B=0.705 u_U=0.000 u_T=0.970 u_L=0.958, base=0.679, κ=0.714, ρ=0.000, Ψ=0.4852[0m
+[0;32mI (20084) main: STATUS: State=CH, Role=CH, CH=3125683842, Size=2[0m
+[0;33mW (20104) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;33mW (20154) ELECTION: CH conflict: Neighbor 3125683842 is better (Score 0.50 vs My 0.49). Yielding.[0m
+[0;33mW (20154) STATE: CH conflict detected during assertion grace - yielding[0m
+[0;32mI (20154) STATE: Yielding to existing CH 3125683842 during assertion[0m
+[0;32mI (20164) STATE: State transition: CH -> MEMBER[0m
+[0;33mW (20234) BLE: Mfg data check: mfg_data_len=20, needed=20, offset=2, total_len=22[0m
+[0;32mI (20264) BLE: BLE scanning stopped[0m
+[0;32mI (20264) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (20264) BLE: BLE advertising stopped[0m
+[0;32mI (20264) STATE: BLE PRE-GUARD: Stopped BLE 2.8s before DATA phase[0m
+[0;32mI (20264) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (20274) NimBLE: disc_mode=2[0m
+[0;32mI (20274) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (20284) NimBLE: [0m
+
+[0;32mI (20284) BLE: BLE advertising started[0m
+[0;32mI (20294) STATE: MEMBER: BLE advertising started[0m
+[0;32mI (21084) METRICS: [STELLAR] Lyapunov weights: B=0.289 U=0.218 T=0.295 L=0.197, V=0.00002, Conv=1[0m
+[0;32mI (21084) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (21084) METRICS: [STELLAR] Score components: u_B=0.705 u_U=0.000 u_T=0.970 u_L=0.958, base=0.679, κ=0.714, ρ=0.000, Ψ=0.4852[0m
+[0;32mI (21094) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (21134) LED_MANAGER: LED applied state: 4[0m
+[0;32mI (21394) BLE: Advertising packet: node_id=3125565838, seq=17, HMAC=ac, packet_size=20[0m
+[0;32mI (21394) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (22104) METRICS: [STELLAR] Lyapunov weights: B=0.289 U=0.218 T=0.295 L=0.198, V=0.00002, Conv=1[0m
+[0;32mI (22104) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (22104) METRICS: [STELLAR] Score components: u_B=0.705 u_U=0.000 u_T=0.970 u_L=0.958, base=0.679, κ=0.714, ρ=0.000, Ψ=0.4853[0m
+[0;32mI (22114) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (22394) BLE: Advertising packet: node_id=3125565838, seq=18, HMAC=13, packet_size=20[0m
+[0;32mI (22394) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (22394) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (22394) NimBLE: disc_mode=2[0m
+[0;32mI (22404) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (22404) NimBLE: [0m
+
+[0;32mI (23114) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (23114) BLE: BLE advertising stopped[0m
+[0;32mI (23114) STATE: ╔═══════════════════════════════════════════════════╗[0m
+[0;32mI (23124) STATE: ║  STELLAR phase END  →  DATA phase START          ║[0m
+[0;32mI (23134) STATE: ╠═══════════════════════════════════════════════════╣[0m
+[0;32mI (23144) STATE: ║  Role: MEMBER                                    ║[0m
+[0;32mI (23154) STATE: ║  BLE  RX (scan): INACTIVE  TX (adv): INACTIVE    ║[0m
+[0;32mI (23154) STATE: ║  ESP-NOW RX: ACTIVE         TX: ACTIVE            ║[0m
+[0;32mI (23164) STATE: ║  MSLG chunks stored: 51                          ║[0m
+[0;32mI (23174) STATE: ╚═══════════════════════════════════════════════════╝[0m
+[0;33mW (23184) STATE: NO-SCHED: Waiting for TDMA schedule from CH (data buffered in MSLG, chunks=51)[0m
+[0;32mI (23194) METRICS: [STELLAR] Lyapunov weights: B=0.289 U=0.218 T=0.296 L=0.198, V=0.00002, Conv=1[0m
+[0;32mI (23204) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (23214) METRICS: [STELLAR] Score components: u_B=0.705 u_U=0.000 u_T=0.970 u_L=0.958, base=0.680, κ=0.714, ρ=0.000, Ψ=0.4854[0m
+[0;32mI (23224) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (24224) METRICS: [STELLAR] Lyapunov weights: B=0.289 U=0.218 T=0.296 L=0.198, V=0.00002, Conv=1[0m
+[0;32mI (24224) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (24224) METRICS: [STELLAR] Score components: u_B=0.705 u_U=0.000 u_T=0.970 u_L=0.958, base=0.680, κ=0.714, ρ=0.000, Ψ=0.4855[0m
+[0;32mI (24234) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (24284) battery: BAT: avg_raw=1563 adc_pin=1.368V battery=10.71V pct=48% (samples=8/8)[0m
+[0;32mI (24284) main: BAT vadc=1368mV vbat=10711mV pct=48%[0m
+[0;32mI (24284) main: PME batt=48% mode=POWER_SAVE[0m
+[0;32mI (24304) STORAGE: MSLG chunk written: RAW 157 bytes | CRC32=0x6CA10A50[0m
+[0;32mI (24304) main: Stored seq=4 to MSLG (role=MBR) | chunks: 52[0m
+[0;32mI (24304) main: Smart Sleep: Waiting 5000 ms (BLE Active)[0m
+[0;32mI (25244) METRICS: [STELLAR] Lyapunov weights: B=0.289 U=0.218 T=0.296 L=0.198, V=0.00002, Conv=1[0m
+[0;32mI (25244) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (25244) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.970 u_L=0.958, base=0.683, κ=0.714, ρ=0.000, Ψ=0.4875[0m
+[0;32mI (25254) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (26264) METRICS: [STELLAR] Lyapunov weights: B=0.288 U=0.217 T=0.296 L=0.198, V=0.00002, Conv=1[0m
+[0;32mI (26264) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (26264) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.970 u_L=0.958, base=0.683, κ=0.714, ρ=0.000, Ψ=0.4877[0m
+[0;32mI (26274) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (27284) METRICS: [STELLAR] Lyapunov weights: B=0.288 U=0.217 T=0.296 L=0.198, V=0.00003, Conv=1[0m
+[0;32mI (27284) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (27284) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.970 u_L=0.958, base=0.683, κ=0.714, ρ=0.000, Ψ=0.4880[0m
+[0;32mI (27294) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (28304) METRICS: [STELLAR] Lyapunov weights: B=0.288 U=0.217 T=0.297 L=0.198, V=0.00003, Conv=1[0m
+[0;32mI (28304) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (28304) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.970 u_L=0.958, base=0.684, κ=0.714, ρ=0.000, Ψ=0.4882[0m
+[0;32mI (28314) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (29324) METRICS: [STELLAR] Lyapunov weights: B=0.288 U=0.216 T=0.297 L=0.199, V=0.00004, Conv=1[0m
+[0;32mI (29324) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (29324) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.970 u_L=0.958, base=0.684, κ=0.714, ρ=0.000, Ψ=0.4885[0m
+[0;32mI (29334) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (29384) battery: BAT: avg_raw=1552 adc_pin=1.358V battery=10.63V pct=45% (samples=8/8)[0m
+[0;32mI (29384) main: BAT vadc=1358mV vbat=10633mV pct=45%[0m
+[0;32mI (29384) main: PME batt=45% mode=POWER_SAVE[0m
+[0;32mI (29404) STORAGE: MSLG chunk written: RAW 155 bytes | CRC32=0xD319664E[0m
+[0;32mI (29404) main: Stored seq=5 to MSLG (role=MBR) | chunks: 53[0m
+[0;32mI (29404) main: Smart Sleep: Waiting 5000 ms (BLE Active)[0m
+[0;32mI (30344) METRICS: [STELLAR] Lyapunov weights: B=0.288 U=0.216 T=0.297 L=0.199, V=0.00005, Conv=1[0m
+[0;32mI (30344) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (30344) METRICS: [STELLAR] Score components: u_B=0.686 u_U=0.000 u_T=0.970 u_L=0.958, base=0.676, κ=0.714, ρ=0.000, Ψ=0.4832[0m
+[0;32mI (30354) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (31364) METRICS: [STELLAR] Lyapunov weights: B=0.288 U=0.215 T=0.298 L=0.199, V=0.00005, Conv=1[0m
+[0;32mI (31364) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (31364) METRICS: [STELLAR] Score components: u_B=0.686 u_U=0.000 u_T=0.970 u_L=0.958, base=0.677, κ=0.714, ρ=0.000, Ψ=0.4835[0m
+[0;32mI (31374) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (31964) SM_SYNC: Phase sync: aligning to CH DATA entry (elapsed=20000 ms -> PHASE_DATA, diff=8880 ms)[0m
+[0;32mI (31974) ESP_NOW: ┌─ TIME SLICE RECEIVED ─────────────────────────────────┐[0m
+[0;32mI (31984) ESP_NOW: │ Slot: 0 | Duration: 7s | Epoch: 35678082 (local: 30749370) │[0m
+[0;32mI (31984) ESP_NOW: └───────────────────────────────────────────────────────┘[0m
+[0;32mI (32004) STATE: ┌─ TDMA WINDOW STARTED ─────────────────────────┐[0m
+[0;32mI (32014) STATE: │ Slot: 0 | Duration: 7s                      │[0m
+[0;32mI (32024) STATE: │ MSLG chunks in storage at start: 53           │[0m
+[0;32mI (32024) STATE: └───────────────────────────────────────────────┘[0m
+[0;32mI (32044) STATE: TIME SLICING: In Slot 0 (window match), sending...[0m
+[0;32mI (32574) ESP_NOW: RX Historical Data: {"id":3125683842,"seq":24,"mac":"1020ba4e2682","ts":71757,"t":27.0,"h":52.2,"p":1007,"q":146,"eco2":727,"tvoc":364,"mx":33.00,"my":-26.00,"mz":1.10,"a":0.039}[0m
+[0;32mI (33004) METRICS: [STELLAR] Lyapunov weights: B=0.288 U=0.215 T=0.298 L=0.199, V=0.00006, Conv=1[0m
+[0;32mI (33004) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (33034) METRICS: [STELLAR] Score components: u_B=0.686 u_U=0.000 u_T=0.970 u_L=0.958, base=0.677, κ=0.714, ρ=0.000, Ψ=0.4839[0m
+[0;32mI (33034) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (33414) STORAGE: Batch popped 24 MSLG chunks in one SPIFFS pass, remaining≈29[0m
+[0;32mI (33414) STORAGE: MSLG chunk written: RAW 158 bytes | CRC32=0xA2DF5C99[0m
+Storage: 11.017 MB / 11.023 MB remaining
+[0;32mI (33414) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.90 (Success=1)[0m
+[0;32mI (33424) ESP_NOW: RX Historical Data: {"id":3125683842,"seq":3,"mac":"1020ba4e2682","ts":17682,"t":25.7,"h":69.1,"p":1014,"q":113,"eco2":973,"tvoc":453,"mx":9.20,"my":47.20,"mz":-30.40,"a":0.050}[0m
+[0;32mI (33454e=0.683, κ=0.714, ρ=0.000, Ψ=0.4879[0m
+[0;32mI (33410) main: STATUS: State=MEMBER, Role=NODE, CH=3125565838, Size=2[0m
+[0;32mI (33610) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":3,"mac":"1020ba4c598e","ts":17451,"t":32.7,"h":57.4,"p":1023,"q":131,"eco2":1075,"tvoc":497,"mx":8.70,"my":2.20,"mz":4.70,"a":0.045}[0m
+[0;32mI (34440) METRICS: [STELLAR] Lyapunov weights: B=0.288 U=0.214 T=0.298 L=0.200, V=0.00008, Conv=1[0m
+[0;32mI (34440) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (34440) METRICS: [STELLAR] Score components: u_B=0.705 u_U=0.000 u_T=0.969 u_L=0.958, base=0.684, κ=0.714, ρ=0.000, Ψ=0.4883[0m
+[0;32mI (34450) STORAGE: MSLG chunk written: RAW 155 bytes | CRC32=0x95CDAAF0[0m
+Storage: 11.023 MB / 11.023 MB remaining
+[0;32mI (34460) NEIGHBOR: [TEST] Trust Updated for Node 3125565838: New Score = 0.90 (Success=1)[0m
+[0;32mI (34470) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":4,"mac":"1020ba4c598e","ts":23153,"t":33.1,"h":49.0,"p":1006,"q":71,"eco2":965,"tvoc":49,"mx":-12.20,"my":21.80,"mz":-15.90,"a":0.001}[0m
+[0;32mI (34490) main: STATUS: State=MEMBER, Role=NODE, CH=3125565838, Size=2[0m
+[0;32mI (34500) STORAGE: MSLG chunk written: RAW 157 bytes | CRC32=0xCE7E61E0[0m
+Storage: 11.022 MB / 11.023 MB remaining
+[0;32mI (34510) NEIGHBOR: [TEST] Trust Updated for Node 3125565838: New Score = 0.91 (Success=1)[0m
+[0;32mI (34510) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":5,"mac":"1020ba4c598e","ts":28212,"t":34.2,"h":64.9,"p":1007,"q":127,"eco2":688,"tvoc":244,"mx":-5.80,"my":0.90,"mz":-38.90,"a":0.026}[0m
+[0;32mI (34540) STORAGE: MSLG chunk written: RAW 157 bytes | CRC32=0x34BFDF35[0m
+Storage: 11.022 MB / 11.023 MB remaining
+[0;32mI (34540) NEIGHBOR: [TEST] Trust Updated for Node 3125565838: New Score = 0.92 (Success=1)[0m
+[0;32mI (34550) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":6,"mac":"1020ba4c598e","ts":33272,"t":24.6,"h":49.6,"p":1012,"q":44,"eco2":846,"tvoc":77,"mx":35.20,"my":22.10,"mz":-11.80,"a":0.036}[0m
+[0;32mI (34580) STORAGE: MSLG chunk written: RAW 156 bytes | CRC32=0x4F4EF794[0m
+Storage: 11.022 MB / 11.023 MB remaining
+[0;32mI (34580) NEIGHBOR: [TEST] Trust Updated for Node 3125565838: New Score = 0.93 (Success=1)[0m
+[0;32mI (34590) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":7,"mac":"1020ba4c598e","ts":38338,"t":20.5,"h":48.0,"p":1006,"q":96,"eco2":443,"tvoc":104,"mx":28.10,"my":-26.80,"mz":-34.50,"a":0.001}[0m
+[0;32mI (34620) STORAGE: MSLG chunk written: RAW 158 bytes | CRC32=0x444E70B2[0m
+Storage: 11.022 MB / 11.023 MB remaining
+[0;32mI (34620) NEIGHBOR: [TEST] Trust Updated for Node 3125565838: New Score = 0.94 (Success=1)[0m
+[0;32mI (34630) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":8,"mac":"1020ba4c598e","ts":43402,"t":29.1,"h":64.0,"p":1006,"q":41,"eco2":1115,"tvoc":140,"mx":41.80,"my":-13.60,"mz":-23.50,"a":0.041}[0m
+[0;32mI (34660) STORAGE: MSLG chunk written: RAW 159 bytes | CRC32=0x4697B5AF[0m
+Storage: 11.022 MB / 11.023 MB remaining
+[0;32mI (34660) NEIGHBOR: [TEST] Trust Updated for Node 3125565838: New Score = 0.94 (Success=1)[0m
+[0;32mI (34670) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":9,"mac":"1020ba4c598e","ts":48462,"t":20.3,"h":66.6,"p":1020,"q":78,"eco2":764,"tvoc":212,"mx":26.60,"my":12.50,"mz":-26.90,"a":0.016}[0m
+[0;32mI (34690) battery: BAT: avg_raw=1544 adc_pin=1.358V battery=10.63V pct=45% (samples=8/8)[0m
+[0;32mI (34690) main: BAT vadc=1358mV vbat=10633mV pct=45%[0m
+[0;32mI (34700) STORAGE: MSLG chunk written: RAW 157 bytes | CRC32=0x2654F814[0m
+Storage: 11.021 MB / 11.023 MB remaining
+[0;32mI (34710) NEIGHBOR: [TEST] Trust Updated for Node 3125565838: New Score = 0.95 (Success=1)[0m
+[0;32mI (34720) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":10,"mac":"1020ba4c598e","ts":53522,"t":21.8,"h":53.0,"p":1023,"q":89,"eco2":1064,"tvoc":164,"mx":44.50,"my":13.60,"mz":40.70,"a":0.007}[0m
+[0;32mI (34730) main: PME batt=45% mode=POWER_SAVE[0m
+[0;32mI (34740) STORA4) STATE: TIME SLICING: In Slot 0 (window match), sending...[0m
+[0;32mI (34814) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":3,"mac":"1020ba4c598e","ts":17451,"t":32.7,"h":57.4,"p":1023,"q":131,"eco2":1075,"tvoc":497,"mx":8.70,"my":2.20,"mz":4.70,"a":0.045}[0m
+[0;32mI (35314) METRICS: [STELLAR] Lyapunov weights: B=0.288 U=0.214 T=0.299 L=0.200, V=0.00008, Conv=1[0m
+[0;32mI (35314) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (35344) METRICS: [STELLAR] Score components: u_B=0.686 u_U=0.000 u_T=0.970 u_L=0.958, base=0.679, κ=0.714, ρ=0.000, Ψ=0.4846[0m
+[0;32mI (35344) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (35714) STORAGE: Batch popped 24 MSLG chunks in one SPIFFS pass, remaining≈22[0m
+[0;32mI (35714) STORAGE: MSLG chunk written: RAW 155 bytes | CRC32=0x95CDAAF0[0m
+Storage: 11.019 MB / 11.023 MB remaining
+[0;32mI (35714) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.94 (Success=1)[0m
+[0;32mI (35724) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":4,"mac":"1020ba4c598e","ts":23153,"t":33.1,"h":49.0,"p":1006,"q":71,"eco2":965,"tvoc":49,"mx":-12.20,"my":21.80,"mz":-15.90,"a":0.001}[0m
+[0;32mI (35754) STORAGE: MSLG chunk written: RAW 157 bytes | CRC32=0xCE7E61E0[0m
+Storage: 11.018 MB / 11.023 MB remaining
+[0;32mI (35754) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.94 (Success=1)[0m
+[0;32mI (35764) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":5,"mac":"1020ba4c598e","ts":28212,"t":34.2,"h":64.9,"p":1007,"q":127,"eco2":688,"tvoc":244,"mx":-5.80,"my":0.90,"mz":-38.90,"a":0.026}[0m
+[0;32mI (35794) STORAGE: MSLG chunk written: RAW 157 bytes | CRC32=0x34BFDF35[0m
+Storage: 11.018 MB / 11.023 MB remaining
+[0;32mI (35794) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.95 (Success=1)[0m
+[0;32mI (35804) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":6,"mac":"1020ba4c598e","ts":33272,"t":24.6,"h":49.6,"p":1012,"q":44,"eco2":846,"tvoc":77,"mx":35.20,"my":22.10,"mz":-11.80,"a":0.036}[0m
+[0;32mI (35824) battery: BAT: avg_raw=1576 adc_pin=1.378V battery=10.79V pct=50% (samples=8/8)[0m
+[0;32mI (35824) main: BAT vadc=1378mV vbat=10789mV pct=50%[0m
+[0;32mI (35834) STORAGE: MSLG chunk written: RAW 156 bytes | CRC32=0x4F4EF794[0m
+Storage: 11.018 MB / 11.023 MB remaining
+[0;32mI (35844) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.95 (Success=1)[0m
+[0;32mI (35854) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":7,"mac":"1020ba4c598e","ts":38338,"t":20.5,"h":48.0,"p":1006,"q":96,"eco2":443,"tvoc":104,"mx":28.10,"my":-26.80,"mz":-34.50,"a":0.001}[0m
+[0;32mI (35864) main: PME batt=50% mode=POWER_SAVE[0m
+[0;32mI (35874) STORAGE: MSLG chunk written: RAW 158 bytes | CRC32=0x444E70B2[0m
+Storage: 11.018 MB / 11.023 MB remaining
+[0;32mI (35884) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.96 (Success=1)[0m
+[0;32mI (35894) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":8,"mac":"1020ba4c598e","ts":43402,"t":29.1,"h":64.0,"p":1006,"q":41,"eco2":1115,"tvoc":140,"mx":41.80,"my":-13.60,"mz":-23.50,"a":0.041}[0m
+[0;32mI (35914) STORAGE: MSLG chunk written: RAW 159 bytes | CRC32=0x4697B5AF[0m
+Storage: 11.018 MB / 11.023 MB remaining
+[0;32mI (35914) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.96 (Success=1)[0m
+[0;32mI (35924) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":9,"mac":"1020ba4c598e","ts":48462,"t":20.3,"h":66.6,"p":1020,"q":78,"eco2":764,"tvoc":212,"mx":26.60,"my":12.50,"mz":-26.90,"a":0.016}[0m
+[0;32mI (35954) STORAGE: MSLG chunk written: RAW 157 bytes | CRC32=0x2654F814[0m
+Storage: 11.017 MB / 11.023 MB remaining
+[0;32mI (35954) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.97 (Success=1)[0m
+[0;32mI (35964) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":10,"mac":"1020ba4c598e","ts":53522,"t":21.8,"h":53.0,"p":1023,"q":89,"eco2":1064,"tvoc":164,"mx":44.50,"my":13.60,"mz":40.70,"a":0.007}[0m
+[0;32mI (35994) STORAGE: MSLG chunk written: RAW 158 bytes | CRC32=0xA9509D7D[0m
+Storage: 11.017 MB / 11.023 MB remaining
+[0;32mI (35994) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.97 (Success=1)[0m
+[0;32mI (36004) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":11,"mac":"1020ba4c598e","ts":58582,"t":26.8,"h":40.2,"p":1024,"q":32,"eco2":802,"tvoc":155,"mx":16.50,"my":-15.30,"mz":38.60,"a":0.021}[0m
+[0;32mI (36034) STORAGE: MSLG chunk written: RAW 158 bytes | CRC32=0x9B76D0FA[0m
+Storage: 11.017 MB / 11.023 MB remaining
+[0;32mI (36034) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.97 (Success=1)[0m
+[0;32mI (36044) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":12,"mac":"1020ba4c598e","ts":63642,"t":33.4,"h":41.6,"p":1006,"q":124,"eco2":864,"tvoc":304,"mx":-46.10,"my":-27.70,"mz":-11.90,"a":0.012}[0m
+[0;32mI (36074) STORAGE: MSLG chunk written: RAW 161 bytes | CRC32=0xE191DB32[0m
+Storage: 11.017 MB / 11.023 MB remaining
+[0;32mI (36074) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.97 (Success=1)[0m
+[0;32mI (36084) ESP_NOW: RX Historical Data: {"id":3125565838,"seq":13,"mac":"1020ba4c598e","ts":68702,"t":28.6,"h":56.1,"p":1011,"q":104,"eco2":602,"tvoc":398,"mx":-40.20,"my":28.40,"mz":31.70,"a":0.042}[0m
+[0;32mI (36114) STORAGE: MSLG chunk written: RAW 159 bytes | CRC32=0x08526197[0m
+Storage: 11.017 MB / 11.023 MB remaining
+[0;32mI (36114) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.98 (Success=1)[0m
+[0;32mI (36124) ESP_NOW: RX Historical Data: {"id":3125683842,"seq":6,"mac":"1020ba4e2682","ts":33657,"t":31.0,"h":65.1,"p":1015,"q":122,"eco2":1133,"tvoc":439,"mx":42.60,"my":-20.80,"mz":-47.00,"a":0.002}[0m
+[0;32mI (36154) STORAGE: MSLG chunk written: RAW 160 bytes | CRC32=0x19AD3C73[0m
+Storage: 11.016 MB / 11.023 MB remaining
+[0;32mI (36154) NEIGHBOR: [TEST] Trust Updated for Node 3125683842: New Score = 0.98 (Success=1)[0m
+[0;33mW (36164) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;33mW (36174) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;33mW (36174) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;33mW (36184) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;33mW (36184) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;33mW (36194) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;32mI (36194) STORAGE: MSLG chunk written: RAW 156 bytes | CRC32=0x39CE7C47[0m
+[0;33mW (36204) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;32mI (36204) main: Stored seq=6 to MSLG (role=MBR) | chunks: 35[0m
+[0;33mW (36214) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;32mI (36224) main: Smart Sleep: Waiting 100 ms (BLE Active)[0m
+[0;33mW (36224) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;33mW (36234) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;33mW (36234) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;33mW (36304) ESP_NOW: ESP-NOW send status=1 for 10:20:ba:4e:26:80[0m
+[0;33mW (36304) ESP_NOW: fast send: delivery failed status=1 attempt=0[0m
+[0;32mI (36344) METRICS: [STELLAR] Lyapunov weights: B=0.288 U=0.213 T=0.299 L=0.200, V=0.00008, Conv=1[0m
+[0;32mI (36344) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (36344) METRICS: [STELLAR] Score components: u_B=0.731 u_U=0.000 u_T=0.970 u_L=0.958, base=0.692, κ=0.714, ρ=0.000, Ψ=0.4943[0m
+[0;32mI (36354) main: STATUS: State=MEMBER, Role=NODE, CH=3125683842, Size=2[0m
+[0;32mI (36394) battery: BAT: avg_raw=1516 adc_pin=1.328V battery=10.40V pct=39% (samples=8/8)[0m
+[0;32mI (36394) main: BAT vadc=1328mV vbat=10398mV pct=39%[0m
+[0;32mI (36394) main: PME batt=39% mode=POWER_SAVE[0m
+[0;33mW (36414) ESP_NOW: ESP-NOW send status=1 for 10:20:ba:4e:26:80[0m
+[0;33mW (36414) ESP_NOW: fast send: delivery failed status=1 attempt=1[0m
+[0;32mI (36414) STORAGE: MSLG chunk written: RAW 157 bytes | P procedure initiated: stop advertising.[0m
+
+[0;32mI (27844) METRICS: [STELLAR] Lyapunov weights: B=0.286 U=0.216 T=0.300 L=0.199, V=0.00005, Conv=1[0m
+[0;32mI (27844) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (27844) METRICS: [STELLAR] Score components: u_B=0.571 u_U=0.000 u_T=0.976 u_L=0.969, base=0.648, κ=0.714, ρ=0.000, Ψ=0.4629[0m
+[0;32mI (27854) main: STATUS: State=CANDIDATE, Role=NODE, CH=0, Size=2[0m
+[0;32mI (28114) BLE: Advertising packet: node_id=3125668638, seq=24, HMAC=91, packet_size=20[0m
+[0;32mI (28114) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (28114) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (28114) NimBLE: disc_mode=2[0m
+[0;32mI (28124) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (28134) NimBLE: [0m
+
+[0;32mI (28634) ELECTION: ========================================[0m
+[0;32mI (28634) ELECTION: Starting STELLAR CH Election[0m
+[0;32mI (28634) ELECTION: ========================================[0m
+[0;32mI (28634) METRICS: [STELLAR] Lyapunov weights: B=0.286 U=0.215 T=0.300 L=0.199, V=0.00006, Conv=1[0m
+[0;32mI (28644) ELECTION: [Phase 1] Computed utility values for 3 candidates[0m
+[0;32mI (28644) ELECTION:   node_3125668638: u=[0.571, 0.000, 0.976, 0.969][0m
+[0;32mI (28654) ELECTION:   node_3125683842: u=[0.714, 0.000, 0.966, 0.954][0m
+[0;32mI (28664) ELECTION:   node_3125565838: u=[0.705, 0.000, 0.966, 0.954][0m
+[0;32mI (28664) ELECTION: [Phase 2] Computing Pareto frontier[0m
+[0;32mI (28674) ELECTION:   Pareto member: node_3125668638 (dominates 0 nodes)[0m
+[0;32mI (28674) ELECTION:   Pareto member: node_3125683842 (dominates 1 nodes)[0m
+[0;32mI (28684) ELECTION: [Phase 2] Pareto frontier contains 2 nodes[0m
+[0;32mI (28694) METRICS: [STELLAR] Score components: u_B=0.571 u_U=0.000 u_T=0.976 u_L=0.969, base=0.649, κ=0.984, ρ=0.000, Ψ=0.6382[0m
+[0;32mI (28704) METRICS: [STELLAR] Score components: u_B=0.714 u_U=0.000 u_T=0.966 u_L=0.954, base=0.684, κ=0.909, ρ=0.010, Ψ=0.6315[0m
+[0;32mI (28714) METRICS: [STELLAR] Score components: u_B=0.705 u_U=0.000 u_T=0.966 u_L=0.954, base=0.681, κ=0.909, ρ=0.000, Ψ=0.6192[0m
+[0;32mI (28724) ELECTION: [Phase 3] Nash Bargaining selection[0m
+[0;33mW (28734) ELECTION: [Phase 3] Nash bargaining failed, using max STELLAR score from Pareto[0m
+[0;32mI (28734) ELECTION: ========================================[0m
+[0;32mI (28744) ELECTION: STELLAR Election Complete[0m
+[0;32mI (28744) ELECTION: Winner: node_3125668638 (self=1)[0m
+[0;32mI (28754) ELECTION: ========================================[0m
+[0;32mI (28754) ELECTION:   Candidate: node_3125668638, Ψ=0.6382, Pareto=1, Dom=0, κ=0.97[0m
+[0;32mI (28764) ELECTION:   Candidate: node_3125683842, Ψ=0.6315, Pareto=1, Dom=1, κ=0.80[0m
+[0;32mI (28774) ELECTION:   Candidate: node_3125565838, Ψ=0.6192, Pareto=0, Dom=0, κ=0.80[0m
+[0;32mI (28784) STATE: State transition: CANDIDATE -> CH[0m
+[0;32mI (28864) METRICS: [STELLAR] Lyapunov weights: B=0.285 U=0.215 T=0.300 L=0.199, V=0.00007, Conv=1[0m
+[0;32mI (28864) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (28864) METRICS: [STELLAR] Score components: u_B=0.571 u_U=0.000 u_T=0.976 u_L=0.969, base=0.649, κ=0.714, ρ=0.000, Ψ=0.4636[0m
+[0;32mI (28874) main: STATUS: State=CH, Role=CH, CH=0, Size=2[0m
+[0;32mI (28884) STATE: CH assertion grace period started (checking for conflicts)[0m
+[0;32mI (29314) LED_MANAGER: LED applied state: 3[0m
+[0;32mI (29564) battery: BAT: avg_raw=1525 adc_pin=1.302V battery=10.19V pct=33% (samples=8/8)[0m
+[0;32mI (29564) main: BAT vadc=1301mV vbat=10194mV pct=33%[0m
+[0;32mI (29564) main: PME batt=33% mode=POWER_SAVE[0m
+[0;32mI (29884) METRICS: [STELLAR] Lyapunov weights: B=0.285 U=0.214 T=0.301 L=0.199, V=0.00007, Conv=1[0m
+[0;32mI (29884) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (29884) METRICS: [STELLAR] Score components: u_B=0.559 u_U=0.000 u_T=0.976 u_L=0.969, base=0.646, κ=0.714, ρ=0.000, Ψ=0.4616[0m
+[0;32mI (29894) main: STATUS: State=CH, Role=CH, CH=0, Size=2[0m
+[0;32mI (30234) STORAGE: MSLG chunk written: RAW 156 bytes | CRC32=0xBA8F26F3[0m
+[0;32mI (30234) main: Stored seq=5 to MSLG (role=CH) | chunks: 1[0m
+[0;32mI (30234) main: Smart Sleep: Waiting 5000 ms (BLE Active)[0m
+[0;32mI (30904) METRICS: [STELLAR] Lyapunov weights: B=0.285 U=0.214 T=0.301 L=0.200, V=0.00008, Conv=1[0m
+[0;32mI (30904) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (30904) METRICS: [STELLAR] Score components: u_B=0.559 u_U=0.000 u_T=0.976 u_L=0.969, base=0.647, κ=0.714, ρ=0.000, Ψ=0.4620[0m
+[0;32mI (30914) main: STATUS: State=CH, Role=CH, CH=0, Size=2[0m
+[0;32mI (31884) STATE: CH assertion verified - no conflicts detected[0m
+[0;32mI (31884) STATE: [DEBUG] TDMA Schedule: Found 2 neighbors for scheduling[0m
+[0;32mI (31884) STATE: [DEBUG] TDMA Neighbor[0]: node_id=3125683842, verified=1, in_cluster=1, is_ch=0[0m
+[0;32mI (31884) STATE: [DEBUG] TDMA Neighbor[1]: node_id=3125565838, verified=1, in_cluster=1, is_ch=0[0m
+[0;32mI (31894) BLE: BLE scanning stopped[0m
+[0;32mI (31904) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (31904) BLE: BLE advertising stopped[0m
+[0;32mI (31924) METRICS: [STELLAR] Lyapunov weights: B=0.285 U=0.213 T=0.302 L=0.200, V=0.00009, Conv=1[0m
+[0;32mI (31924) METRICS: [STELLAR] Pareto rank=0/2, Centrality=0.200[0m
+[0;32mI (31924) METRICS: [STELLAR] Score components: u_B=0.559 u_U=0.000 u_T=0.976 u_L=0.969, base=0.647, κ=0.714, ρ=0.000, Ψ=0.4624[0m
+[0;32mI (31934) main: STATUS: State=CH, Role=CH, CH=0, Size=2[0m
+[0;32mI (32034) ESP_NOW: Sending ESP-NOW to 10:20:ba:4c:59:8c (attempt=0, peer_ok=1, chan=1, ble_scan=1, ble_adv=1)[0m
+[0;33mW (32034) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4c:59:8c[0m
+[0;32mI (32034) NimBLE: GAP procedure initiated: discovery; [0m
+[0;32mI (32034) NimBLE: own_addr_type=0 filter_policy=0 passive=0 limited=0 filter_duplicates=0 [0m
+[0;32mI (32044) NimBLE: duration=forever[0m
+[0;32mI (32054) NimBLE: [0m
+
+[0;32mI (32054) BLE: BLE scanning started[0m
+[0;32mI (32054) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (32064) NimBLE: disc_mode=2[0m
+[0;32mI (32064) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (32074) NimBLE: [0m
+
+[0;32mI (32074) BLE: BLE advertising started[0m
+[0;32mI (32074) BLE: Advertising packet: node_id=3125668638, seq=25, HMAC=0e, packet_size=20[0m
+[0;32mI (32084) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[0;32mI (32094) STATE: SCHED: Assigned Slot 0 to Node 3125565838 (Score 0.49) [tx#1][0m
+[0;32mI (32094) BLE: BLE scanning stopped[0m
+[0;32mI (32104) NimBLE: GAP procedure initiated: stop advertising.[0m
+
+[1;31mE (32104) BLE: Failed to stop advertising: 2[0m
+[0;32mI (32114) BLE: BLE advertising stopped[0m
+[0;32mI (32234) ESP_NOW: Sending ESP-NOW to 10:20:ba:4e:26:80 (attempt=0, peer_ok=1, chan=1, ble_scan=1, ble_adv=1)[0m
+[0;33mW (32234) ESP_NOW: ESP-NOW send status=0 for 10:20:ba:4e:26:80[0m
+[0;32mI (32234) NimBLE: GAP procedure initiated: discovery; [0m
+[0;32mI (32234) NimBLE: own_addr_type=0 filter_policy=0 passive=0 limited=0 filter_duplicates=0 [0m
+[0;32mI (32244) NimBLE: duration=forever[0m
+[0;32mI (32254) NimBLE: [0m
+
+[0;32mI (32254) BLE: BLE scanning started[0m
+[0;32mI (32254) NimBLE: GAP procedure initiated: advertise; [0m
+[0;32mI (32264) NimBLE: disc_mode=2[0m
+[0;32mI (32264) NimBLE:  adv_channel_map=0 own_addr_type=0 adv_filter_policy=0 adv_itvl_min=48 adv_itvl_max=96[0m
+[0;32mI (32274) NimBLE: [0m
+
+[0;32mI (32274) BLE: BLE advertising started[0m
+[0;32mI (32274) STATE: SCHED: Assigned Slot 1 to Node 3125683842 (Score 0.50) [tx#1][0m
+[0;32mI (32944) METRICS: [STELLAR] Lyapunov weights: B=0.285 U=0.213 T=0.302 L=0.200, V=0.00009

@@ -1,5 +1,12 @@
 # UAV Onboarding Timing Analysis & CH Beacon Timeout Considerations
 
+## Quick Links
+
+- [STELLAR_ALGORITHM.md](STELLAR_ALGORITHM.md) — How cluster head election works and beacon timeout triggers re-election
+- [UAV_ONBOARDING_CRASH_FIX.md](UAV_ONBOARDING_CRASH_FIX.md) — WiFi startup crash and solution
+- [TDMA_SCHEDULING.md](TDMA_SCHEDULING.md) — How members detect CH beacon loss and handle CH_STATUS messages
+- [MSLG_DATA_FLOW.md](MSLG_DATA_FLOW.md) — Store-first reliability pattern ensures no data loss during onboarding
+
 ## 📋 Overview
 
 This document analyzes the timing implications of UAV data onboarding on the STELLAR protocol's Cluster Head (CH) beacon mechanism. When a CH node enters UAV onboarding mode, it switches from BLE beacons to WiFi STA mode, potentially causing member nodes to lose their CH beacon reference.

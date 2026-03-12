@@ -1,8 +1,28 @@
-# MSLG Storage Format & Data Flow Documentation
+# MSLG Storage Format & Data Pipeline Integration
+
+> **Date:** March 2026  
+> **Platform:** ESP32-S3, SPIFFS 2MB partition, miniz compression (deflate)  
+> **Related:** [STELLAR_ALGORITHM.md](STELLAR_ALGORITHM.md), [TDMA_SCHEDULING.md](TDMA_SCHEDULING.md), [MSLG_DATA_FLOW.md](MSLG_DATA_FLOW.md)
 
 ## Overview
 
-This document describes the sensor data storage format (MSLG), compression mechanism, and data flow architecture used in the WSN (Wireless Sensor Network) system.
+This document describes the **MSLG** (MS Log) storage format, compression mechanism, and data flow architecture used in the WSN system. MSLG chunks form the foundation of the **store-first reliability pattern**: nodes must successfully write sensor data to SPIFFS before attempting to transmit to the cluster head (CH).
+
+### Why "MSLG"?
+
+- **MS** = Main Set (the node type)
+- **LG** = Log (chronological data chunks)
+- **Magic bytes:** `0x4D534C47` in little-endian = `"MSLG"` in ASCII
+
+### Key Design Principle
+
+**Store-First:** When a member node's TDMA slot arrives, it must:
+1. Read latest sensor data from mailbox
+2. **Write to SPIFFS immediately** (MSLG chunk)
+3. Transmit to CH via ESP-NOW (reliable delivery)
+4. Burst drain old chunks if SPIFFS is filling up
+
+This ensures data is never lost even if radio transmission fails or is interrupted.
 
 ---
 

@@ -1,6 +1,15 @@
 # TDMA Scheduling and ESP-NOW Communication System
 
-> **Comprehensive guide to Time Division Multiple Access (TDMA) scheduling, ESP-NOW communication timing, and BLE coexistence in the WSN system**
+> **Comprehensive guide to Time Division Multiple Access (TDMA) scheduling, ESP-NOW communication timing, STELLAR-based cluster head role assignment, and BLE coexistence in the WSN system**
+
+---
+
+## Quick Links
+
+- [STELLAR_ALGORITHM.md](STELLAR_ALGORITHM.md) — How CH is elected during STELLAR phase
+- [TIMING_DIAGRAM.md](TIMING_DIAGRAM.md) — Visual timeline of superframe phases
+- [MSLG_DATA_FLOW.md](MSLG_DATA_FLOW.md) — How data flows from sensor → SPIFFS → CH → UAV
+- [DUAL_CORE_SENSOR_ARCHITECTURE.md](DUAL_CORE_SENSOR_ARCHITECTURE.md) — Task scheduling and sensor-radio coupling
 
 ---
 

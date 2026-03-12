@@ -39,7 +39,7 @@
 #define RSSI_EWMA_ALPHA 0.2f
 #define NEIGHBOR_TIMEOUT_MS                                                    \
   60000 // Increased to 60s to survive 20s Stellar + 20s Data phases
-#define CLUSTER_RADIUS_RSSI_THRESHOLD -85.0f
+#define CLUSTER_RADIUS_RSSI_THRESHOLD -75.0f
 // CRITICAL FIX: CH beacon timeout must survive the full DATA phase (20s) where
 // BLE scanning is disabled. Set to 45s to cover DATA + partial STELLAR + buffer.
 // The actual timeout check is now phase-aware (disabled during DATA phase).
