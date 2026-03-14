@@ -22,6 +22,7 @@
 #define STELLAR_PHASE_MS 20000 // 20s STELLAR metrics/election window
 #define DATA_PHASE_MS 20000    // 20s TDMA data window
 #define PHASE_GUARD_MS 5000 // Guard before TDMA slots start inside DATA phase
+#define BLE_PRE_GUARD_MS 3000 // 3s guard: stop BLE before STELLAR ends to free radio for ESP-NOW
 #define STATE_MACHINE_TASK_STACK_SIZE                                          \
   12288 // Increased from 8192 to prevent stack overflow (with compression)
 #define STATE_MACHINE_TASK_PRIORITY 5

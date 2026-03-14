@@ -14,6 +14,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,36 +34,58 @@ typedef struct {
   uint32_t recent_seqs[DEDUP_HISTORY_PER_NODE];
   int seq_idx;  // Circular index into recent_seqs
   int count;    // How many entries are valid (0..DEDUP_HISTORY_PER_NODE)
+  uint64_t last_seen_ms;  // Timestamp for LRU eviction
 } dedup_entry_t;
 static dedup_entry_t s_dedup_table[DEDUP_MAX_NODES];
 static int s_dedup_count = 0;
+// BUG 9 FIX: Mutex to protect dedup table from concurrent access.
+// process_packet() is called from WiFi driver ISR context (separate task),
+// so simultaneous packet arrivals can cause data races.
+static SemaphoreHandle_t s_dedup_mutex = NULL;
 
 // Returns true if this (node_id, seq) should be stored (first time seen)
 // Tracks a small sliding window of recent seq nums per node to handle
 // both live duplicates and historical data interleaved.
 static bool dedup_should_store(uint32_t node_id, uint32_t seq_num) {
   dedup_entry_t *entry = NULL;
-  
+  uint64_t now_ms = esp_timer_get_time() / 1000;
+
   // Find existing entry for this node
   for (int i = 0; i < s_dedup_count; i++) {
     if (s_dedup_table[i].node_id == node_id) {
       entry = &s_dedup_table[i];
+      entry->last_seen_ms = now_ms;  // Update access time for LRU
       break;
     }
   }
-  
+
   // New node — add to table
   if (!entry) {
     if (s_dedup_count < DEDUP_MAX_NODES) {
       entry = &s_dedup_table[s_dedup_count++];
     } else {
-      entry = &s_dedup_table[0];  // Evict oldest
+      // BUG 8 FIX: Find and evict the least recently used (LRU) entry.
+      // Previously always evicted slot 0, which is the very first node,
+      // not necessarily the least recently used. This caused permanent
+      // loss of dedup history for that node.
+      int lru_idx = 0;
+      uint64_t oldest_time = s_dedup_table[0].last_seen_ms;
+      for (int i = 1; i < DEDUP_MAX_NODES; i++) {
+        if (s_dedup_table[i].last_seen_ms < oldest_time) {
+          oldest_time = s_dedup_table[i].last_seen_ms;
+          lru_idx = i;
+        }
+      }
+      entry = &s_dedup_table[lru_idx];
+      ESP_LOGD("ESP_NOW", "Dedup table full, evicting LRU node_%lu (last seen %llu ms ago)",
+               entry->node_id, now_ms - entry->last_seen_ms);
     }
     entry->node_id = node_id;
     entry->seq_idx = 0;
     entry->count = 0;
+    entry->last_seen_ms = now_ms;
   }
-  
+
   // Check if seq already in recent history
   int check_count = (entry->count < DEDUP_HISTORY_PER_NODE) ? entry->count : DEDUP_HISTORY_PER_NODE;
   for (int i = 0; i < check_count; i++) {
@@ -70,14 +93,14 @@ static bool dedup_should_store(uint32_t node_id, uint32_t seq_num) {
       return false;  // Already stored recently
     }
   }
-  
+
   // New seq — add to circular buffer
   entry->recent_seqs[entry->seq_idx] = seq_num;
   entry->seq_idx = (entry->seq_idx + 1) % DEDUP_HISTORY_PER_NODE;
   if (entry->count < DEDUP_HISTORY_PER_NODE) {
     entry->count++;
   }
-  
+
   return true;
 }
 
@@ -179,10 +202,32 @@ static void process_packet(const esp_now_recv_info_t *info, const uint8_t *data,
              payload->mag_y, payload->mag_z, payload->audio_rms);
 
     // Dedup: Only store if this is a NEW sequence number for this node
-    if (!dedup_should_store(payload->node_id, payload->seq_num)) {
+    bool should_store = false;
+    if (s_dedup_mutex && xSemaphoreTake(s_dedup_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+      should_store = dedup_should_store(payload->node_id, payload->seq_num);
+      xSemaphoreGive(s_dedup_mutex);
+    } else {
+      // Can't acquire mutex (timeout) - allow through to be safe
+      should_store = true;
+    }
+
+    if (!should_store) {
       ESP_LOGD(TAG, "Dedup: Skipping node_%lu seq=%lu (already stored)",
                payload->node_id, payload->seq_num);
       // Still update neighbor trust even for duplicates
+      neighbor_entry_t n;
+      if (neighbor_manager_get_by_mac(info->src_addr, &n)) {
+        neighbor_manager_update_trust(n.node_id, true);
+      }
+      return;
+    }
+
+    // ROLE CHECK: Only CH stores received member sensor data
+    // MEMBER nodes should not duplicate CH's received data in their storage
+    extern bool g_is_ch;
+    if (!g_is_ch) {
+      ESP_LOGD(TAG, "MEMBER: Ignoring received sensor payload (CH only stores member data)");
+      // Still update neighbor trust even if not storing
       neighbor_entry_t n;
       if (neighbor_manager_get_by_mac(info->src_addr, &n)) {
         neighbor_manager_update_trust(n.node_id, true);
@@ -226,17 +271,65 @@ static void process_packet(const esp_now_recv_info_t *info, const uint8_t *data,
       // Format: {"id":NNNN,"seq":NNNN,...}
       uint32_t hist_id = 0, hist_seq = 0;
       bool parsed_ok = false;
-      const char *id_ptr = strstr(json_data, "\"id\":");
-      const char *seq_ptr = strstr(json_data, "\"seq\":");
-      if (id_ptr && seq_ptr) {
-        hist_id = (uint32_t)strtoul(id_ptr + 5, NULL, 10);
-        hist_seq = (uint32_t)strtoul(seq_ptr + 6, NULL, 10);
-        parsed_ok = true;
+
+      // BUG 13 FIX: Use more robust JSON parsing to avoid substring mismatches.
+      // Previously used strstr which could find "grid_id" instead of "id".
+      // Now validate field boundaries and handle parse errors gracefully.
+      const char *id_ptr = json_data;
+      while ((id_ptr = strstr(id_ptr, "\"id\"")) != NULL) {
+        // Check that "id" is not part of a longer field name (no alphanumeric before it)
+        if (id_ptr == json_data || !isalnum((unsigned char)*(id_ptr - 1))) {
+          id_ptr = strstr(id_ptr, ":");
+          if (id_ptr) {
+            id_ptr++;
+            hist_id = (uint32_t)strtoul(id_ptr, NULL, 10);
+            break;
+          }
+        }
+        id_ptr++;  // Skip this occurrence
       }
-      
-      if (parsed_ok && !dedup_should_store(hist_id, hist_seq)) {
-        ESP_LOGD(TAG, "Dedup: Skipping historical node_%lu seq=%lu (already stored)",
-                 hist_id, hist_seq);
+
+      const char *seq_ptr = json_data;
+      while ((seq_ptr = strstr(seq_ptr, "\"seq\"")) != NULL) {
+        // Check that "seq" is not part of a longer field name
+        if (seq_ptr == json_data || !isalnum((unsigned char)*(seq_ptr - 1))) {
+          seq_ptr = strstr(seq_ptr, ":");
+          if (seq_ptr) {
+            seq_ptr++;
+            hist_seq = (uint32_t)strtoul(seq_ptr, NULL, 10);
+            parsed_ok = true;
+            break;
+          }
+        }
+        seq_ptr++;  // Skip this occurrence
+      }
+
+      // Validate that parsed values are reasonable (not just 0 from parse failure)
+      if (parsed_ok && hist_id > 0) {
+        bool should_store_json = true;
+        if (s_dedup_mutex && xSemaphoreTake(s_dedup_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+          should_store_json = dedup_should_store(hist_id, hist_seq);
+          xSemaphoreGive(s_dedup_mutex);
+        }
+
+        if (!should_store_json) {
+          ESP_LOGD(TAG, "Dedup: Skipping historical node_%lu seq=%lu (already stored)",
+                   hist_id, hist_seq);
+          free(json_data);
+          // Still update trust
+          neighbor_entry_t n;
+          if (neighbor_manager_get_by_mac(info->src_addr, &n)) {
+            neighbor_manager_update_trust(n.node_id, true);
+          }
+          return;
+        }
+      }
+
+      // ROLE CHECK: Only CH stores received historical data
+      // MEMBER nodes should not store CH's historical backups in their storage
+      extern bool g_is_ch;
+      if (!g_is_ch) {
+        ESP_LOGD(TAG, "MEMBER: Ignoring received historical data (CH only stores backups)");
         free(json_data);
         // Still update trust
         neighbor_entry_t n;
@@ -245,7 +338,7 @@ static void process_packet(const esp_now_recv_info_t *info, const uint8_t *data,
         }
         return;
       }
-      
+
       ESP_LOGI(TAG, "RX Historical Data: %s", json_data);
       storage_manager_write_compressed(json_data, true);
       storage_manager_display_status();
@@ -354,60 +447,112 @@ esp_err_t esp_now_manager_init(void) {
     return ESP_ERR_NO_MEM;
   }
 
+  // BUG 9 FIX: Initialize dedup table mutex for thread safety
+  s_dedup_mutex = xSemaphoreCreateMutex();
+  if (s_dedup_mutex == NULL) {
+    ESP_LOGE(TAG, "Failed to create dedup table mutex!");
+    return ESP_ERR_NO_MEM;
+  }
+
   ESP_LOGI(TAG, "ESP-NOW initialized on channel %d", ESP_NOW_CHANNEL);
   return ESP_OK;
 }
 
 esp_err_t esp_now_manager_deinit(void) {
   ESP_LOGI(TAG, "Deinitializing ESP-NOW for UAV onboarding...");
-  
+
+  // BUG 11 FIX: Delete semaphores to prevent memory leaks on every onboarding cycle.
+  // Previously these were leaked, causing heap exhaustion after multiple cycles.
+  if (s_send_sem) {
+    vSemaphoreDelete(s_send_sem);
+    s_send_sem = NULL;
+  }
+  if (s_send_done) {
+    vSemaphoreDelete(s_send_done);
+    s_send_done = NULL;
+  }
+  if (s_dedup_mutex) {
+    vSemaphoreDelete(s_dedup_mutex);
+    s_dedup_mutex = NULL;
+  }
+
   // Deinit ESP-NOW first (must be done before wifi changes)
   esp_err_t err = esp_now_deinit();
   if (err != ESP_OK && err != ESP_ERR_ESPNOW_NOT_INIT) {
     ESP_LOGE(TAG, "Failed to deinit ESP-NOW: %s", esp_err_to_name(err));
     return err;
   }
-  
+
   // Stop WiFi (will be restarted by uav_client in STA mode to connect to AP)
   err = esp_wifi_stop();
   if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_STARTED) {
     ESP_LOGE(TAG, "Failed to stop WiFi: %s", esp_err_to_name(err));
     return err;
   }
-  
+
   ESP_LOGI(TAG, "ESP-NOW deinitialized, WiFi stopped");
   return ESP_OK;
 }
 
 esp_err_t esp_now_manager_reinit(void) {
   ESP_LOGI(TAG, "Reinitializing ESP-NOW after UAV onboarding...");
-  
+
+  // BUG 12 FIX: Reset semaphores to ensure first send doesn't hang.
+  // If a send was in progress when deinit happened, the old semaphore
+  // state would be lost. We create new ones in a known-good state.
+
   // Disconnect from any AP first
   esp_wifi_disconnect();
-  
+
   // Stop WiFi cleanly
   esp_err_t err = esp_wifi_stop();
   if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_STARTED) {
     ESP_LOGW(TAG, "WiFi stop warning: %s", esp_err_to_name(err));
   }
-  
+
   // Reconfigure WiFi for ESP-NOW (STA mode, fixed channel)
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_start());
   ESP_ERROR_CHECK(esp_wifi_set_channel(ESP_NOW_CHANNEL, WIFI_SECOND_CHAN_NONE));
   ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
-  
+
   // Reinitialize ESP-NOW
   err = esp_now_init();
   if (err != ESP_OK && err != ESP_ERR_ESPNOW_EXIST) {
     ESP_LOGE(TAG, "Failed to reinit ESP-NOW: %s", esp_err_to_name(err));
     return err;
   }
-  
+
   ESP_ERROR_CHECK(esp_now_register_send_cb((esp_now_send_cb_t)esp_now_send_cb));
   ESP_ERROR_CHECK(esp_now_register_recv_cb(esp_now_recv_cb));
   ESP_ERROR_CHECK(esp_now_set_pmk((uint8_t *)ESP_NOW_PMK));
-  
+
+  // Recreate semaphores in fresh state
+  s_send_sem = xSemaphoreCreateBinary();
+  if (s_send_sem == NULL) {
+    ESP_LOGE(TAG, "Failed to create send semaphore in reinit!");
+    return ESP_ERR_NO_MEM;
+  }
+  xSemaphoreGive(s_send_sem);  // Make it available
+
+  s_send_done = xSemaphoreCreateBinary();
+  if (s_send_done == NULL) {
+    ESP_LOGE(TAG, "Failed to create send-done semaphore in reinit!");
+    return ESP_ERR_NO_MEM;
+  }
+
+  s_dedup_mutex = xSemaphoreCreateMutex();
+  if (s_dedup_mutex == NULL) {
+    ESP_LOGE(TAG, "Failed to create dedup mutex in reinit!");
+    return ESP_ERR_NO_MEM;
+  }
+
+  // Reset dedup table state
+  s_dedup_count = 0;
+  memset(s_dedup_table, 0, sizeof(s_dedup_table));
+
+  s_last_send_status = -1;
+
   ESP_LOGI(TAG, "ESP-NOW reinitialized on channel %d", ESP_NOW_CHANNEL);
   return ESP_OK;
 }
@@ -650,14 +795,14 @@ static const uint8_t BROADCAST_ADDR[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 esp_err_t esp_now_manager_broadcast_ch_status(uint8_t status) {
   // Get own node ID
   extern uint32_t g_node_id;
-  
+
   ch_status_msg_t msg = {
     .magic = ESP_NOW_MAGIC_CH_STATUS,
     .ch_node_id = g_node_id,
     .status = status,
     .reserved = {0}
   };
-  
+
   // Ensure broadcast peer is registered
   if (!esp_now_is_peer_exist(BROADCAST_ADDR)) {
     esp_now_peer_info_t peer = {0};
@@ -667,22 +812,46 @@ esp_err_t esp_now_manager_broadcast_ch_status(uint8_t status) {
     peer.encrypt = false;
     esp_now_add_peer(&peer);
   }
-  
+
   ESP_LOGI(TAG, "Broadcasting CH_STATUS: %s (node_%lu)",
            status == CH_STATUS_UAV_BUSY ? "UAV_BUSY" :
            status == CH_STATUS_RESUME ? "RESUME" : "NORMAL",
            g_node_id);
-  
-  // Send multiple times for reliability (members may be in different states)
+
+  // BUG 10 FIX: Use the send semaphore to prevent watchdog timeout.
+  // Previously bypassed s_send_sem and sent 3 times back-to-back,
+  // which can trigger the watchdog crash that the semaphore was designed to prevent.
   esp_err_t ret = ESP_OK;
   for (int i = 0; i < 3; i++) {
+    // Wait for any previous in-flight frame to complete
+    if (s_send_sem && xSemaphoreTake(s_send_sem, pdMS_TO_TICKS(200)) != pdTRUE) {
+      ESP_LOGW(TAG, "CH_STATUS broadcast: send semaphore timeout on attempt %d", i);
+      vTaskDelay(pdMS_TO_TICKS(50));
+      continue;
+    }
+
+    // Arm done-semaphore before sending
+    s_last_send_status = -1;
+    if (s_send_done) {
+      xSemaphoreTake(s_send_done, 0);
+    }
+
     ret = esp_now_send(BROADCAST_ADDR, (uint8_t *)&msg, sizeof(msg));
     if (ret != ESP_OK) {
+      if (s_send_sem) xSemaphoreGive(s_send_sem);
       ESP_LOGW(TAG, "CH_STATUS broadcast attempt %d failed: %s", i, esp_err_to_name(ret));
+      vTaskDelay(pdMS_TO_TICKS(50));
+      continue;
     }
+
+    // Wait for MAC-layer ACK
+    if (s_send_done && xSemaphoreTake(s_send_done, pdMS_TO_TICKS(300)) != pdTRUE) {
+      ESP_LOGW(TAG, "CH_STATUS broadcast: ACK timeout on attempt %d", i);
+    }
+
     vTaskDelay(pdMS_TO_TICKS(50)); // Small delay between broadcasts
   }
-  
+
   return ret;
 }
 

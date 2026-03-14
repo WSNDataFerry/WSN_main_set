@@ -14,13 +14,13 @@ for PORT in "${PORTS[@]}"; do
 done
 sleep 2
 
-echo "cleaning Previous BUILD..."
-idf.py fullclean && rm -rf build
-sleep 1
+# echo "cleaning Previous BUILD..."
+# idf.py fullclean && rm -rf build
+# sleep 1
 
-echo "Building firmware..."
-idf.py build
-sleep 1
+# echo "Building firmware..."
+# idf.py build
+# sleep 1
 
 for PORT in "${PORTS[@]}"; do
     echo "----------------------------------------"
@@ -33,20 +33,20 @@ echo "----------------------------------------"
 echo "All devices flashed successfully!"
 sleep 3
 
-export IDF_MONITOR_NO_COLORS=1
+# export IDF_MONITOR_NO_COLORS=1
 
-# script -q -c "idf.py -p /dev/ttyACM0 monitor --no-reset" > /home/punky/esp_1/esp_project/WSN_main_set/logs/out.log &
+# script -q -c "idf.py -p /dev/ttyACM0 monitor --no-reset" > logs/out.log &
 # PID1=$!
-# script -q -c "idf.py -p /dev/ttyACM1 monitor --no-reset" > /home/punky/esp_1/esp_project/WSN_main_set/logs/out1.log &  
+# script -q -c "idf.py -p /dev/ttyACM1 monitor --no-reset" > logs/out1.log &  
 # PID2=$!
-# script -q -c "idf.py -p /dev/ttyACM2 monitor --no-reset" > /home/punky/esp_1/esp_project/WSN_main_set/logs/out2.log &
+# script -q -c "idf.py -p /dev/ttyACM2 monitor --no-reset" > logs/out2.log &
 # PID3=$!
 
-script -q -c "idf.py -p /dev/ttyACM0 monitor " > /home/punky/esp_1/esp_project/WSN_main_set/logs/out.log &
+script -q -c "idf.py -p /dev/ttyACM0 monitor " > logs/out.log &
 PID1=$!
-script -q -c "idf.py -p /dev/ttyACM1 monitor " > /home/punky/esp_1/esp_project/WSN_main_set/logs/out1.log &  
+script -q -c "idf.py -p /dev/ttyACM1 monitor " > logs/out1.log &  
 PID2=$!
-script -q -c "idf.py -p /dev/ttyACM2 monitor " > /home/punky/esp_1/esp_project/WSN_main_set/logs/out2.log &
+script -q -c "idf.py -p /dev/ttyACM2 monitor " > logs/out2.log &
 PID3=$!
 
 echo "NODE_1 PID: $PID1"

@@ -51,7 +51,7 @@ across both cores as needed.
 │  │  app_main  (sensor loop)                         │  Priority: 1   │
 │  │  • I2C sensor reads (BME280, AHT21, ENS160, etc)│                │
 │  │  • seq_num increment                             │                │
-│  │  • metrics_set_sensor_data()                     │                │
+│  │  • Build local sensor_payload_t                  │                │
 │  │  • Sleep 100ms–5000ms (PME-dependent)            │                │
 │  │  • Runs in BOTH phases — no phase check          │                │
 │  └──────────────────────────────────────────────────┘                │
@@ -82,39 +82,26 @@ across both cores as needed.
 
 ---
 
-## 3. Producer-Consumer Model
+## 3. Payload Ownership Model
 
-Sensor data flows through a **single-slot mailbox** (`metrics.c`) protected
-by a FreeRTOS mutex:
+Sensor data no longer flows through a shared mailbox in `metrics.c`.
+Instead, `app_main` assembles a local `sensor_payload_t` and immediately
+uses that same struct for storage and later transmission decisions in the
+same control path.
 
 ```
-  ┌─────────────┐       mutex-protected       ┌──────────────────┐
-  │  app_main   │  ──metrics_set_sensor_data──▶│  metrics.c       │
-  │  (producer) │       overwrites latest      │  current_sensor  │
-  │             │                              │  _data (global)  │
-  └─────────────┘                              └────────┬─────────┘
-                                                        │
-                                               metrics_get_sensor_data
-                                                        │
-                                                        ▼
-                                               ┌──────────────────┐
-                                               │ state_machine    │
-                                               │ (consumer)       │
-                                               │                  │
-                                               │ • JSON format    │
-                                               │ • SPIFFS write   │
-                                               │ • ESP-NOW send   │
-                                               └──────────────────┘
+  ┌─────────────┐      local stack value      ┌──────────────────┐
+  │  app_main   │ ── build sensor_payload_t ─▶│ MSLG storage     │
+  │  (producer) │                             │ + seq ownership   │
+  └─────────────┘                             └──────────────────┘
 ```
 
-### Mailbox semantics
+### Direct payload semantics
 
-- **Write:** `metrics_set_sensor_data(&payload)` — called every main-loop
-  iteration (every 100ms–5000ms depending on PME mode).  Overwrites the
-  previous value.  Always includes a fresh `seq_num` and `timestamp_ms`.
-- **Read:** `metrics_get_sensor_data(&payload)` — called by the state machine
-  during DATA phase.  Returns a copy of whatever the producer last wrote.
-- **Thread safety:** A FreeRTOS mutex serialises access.  No lock-free tricks.
+- **Build:** `sensor_payload_t payload` is assembled every main-loop iteration.
+- **Store:** MSLG writes happen in the same iteration that assigns `seq_num`.
+- **Send:** ESP-NOW receive/send paths operate on concrete payload structs, not
+  a shared “latest sample” cache.
 
 ---
 
@@ -152,8 +139,8 @@ by a FreeRTOS mutex:
 |--------|:------------:|:----------:|
 | I2C sensor reads | ✅ Continuous | ✅ Continuous |
 | `seq_num++` | ✅ Every loop | ✅ Every loop |
-| `metrics_set_sensor_data()` | ✅ Every loop | ✅ Every loop |
-| `metrics_get_sensor_data()` | ❌ Not called | ✅ Called by SM |
+| Build local `sensor_payload_t` | ✅ Every loop | ✅ Every loop |
+| Shared latest-payload mailbox | ❌ Removed | ❌ Removed |
 | SPIFFS write (MSLG chunk) | ❌ | ✅ CH self-store + member store-first |
 | ESP-NOW send | ❌ Radio on BLE | ✅ Member → CH |
 | ESP-NOW receive | ❌ Radio on BLE | ✅ CH receives member data |
@@ -188,10 +175,10 @@ if (ok_aht) {
 
 ### 5.3 Fresh data at DATA phase start
 
-When the state machine transitions from STELLAR → DATA, it calls
-`metrics_get_sensor_data()` immediately.  Because the sensor loop has been
-running throughout STELLAR, the mailbox already contains a reading that is
-at most `sleep_ms` old (5 seconds in POWER_SAVE mode).
+When the state machine transitions from STELLAR → DATA, the sensor loop is
+already producing up-to-date readings continuously. The first DATA-phase
+payload assembled in `app_main` is therefore at most `sleep_ms` old
+(5 seconds in POWER_SAVE mode).
 
 ### 5.4 seq_num always advances
 
@@ -226,13 +213,11 @@ void metrics_update_stellar_score(void) {
     // 1. Get battery from INA219 power sensor
     float battery_pct = ina219_get_battery_percent();
     
-    // 2. Validate against sensor data (ensure both systems agree)
-    // The sensor mailbox contains latest power readings
-    sensor_payload_t latest = metrics_get_sensor_data();
-    if (latest.power.bus_v < 2.8) {
-        battery_pct = 0.0;  // Safety: agree with sensor
+    // 2. Apply safety threshold using the current power reading
+    if (battery_pct < 1.0f) {
+        battery_pct = 0.0f;
     }
-    
+
     // 3. Compute STELLAR utility with current metrics
     float stellar_score = election_stellar_score();
     
@@ -302,11 +287,10 @@ minutes to hours.
 
 ### What is NOT lost
 
-- **No readings are dropped.** The mailbox always holds the latest value.
+- **No readings are dropped.** Storage now happens directly in the main loop.
 - **No phase gaps.** The sensor loop never pauses for phase transitions.
-- **Intermediate STELLAR-phase readings** are overwritten in the mailbox but
-  they served their purpose: keeping ENS160 compensated and ensuring the
-  mailbox is warm when DATA phase starts.
+- **Intermediate STELLAR-phase readings** still serve their purpose by
+  keeping ENS160 compensated and ensuring the next DATA-phase payload is fresh.
 
 ---
 
@@ -319,35 +303,17 @@ Line  415  xTaskCreate(state_machine_task, ...)   // spawns SM task
 Line  520+ while (1) {                             // main sensor loop — never ends
 Line  680+   ok_bme = bme280_read(...)             // I2C reads — no phase check
 Line  890+   s_packet_seq_num++                    // always increments
-Line  950    metrics_set_sensor_data(&payload)     // always updates mailbox
+Line  950    sensor_payload_t payload = {0}        // local payload assembly
 Line  990    vTaskDelay(sleep_ms)                  // PME-dependent sleep
            }
 ```
 
-### Consumer — CH self-store (state_machine.c)
+### DATA path (ms_node.c + esp_now_manager.c)
 
 ```
-Line  604  if (s_current_phase == PHASE_DATA &&    // ← DATA-only guard
-               (now_ms - s_last_ch_store_ms) >= 5000)
-Line  607    metrics_get_sensor_data(&payload)      // reads mailbox
-Line  632    storage_manager_write_compressed(...)   // SPIFFS write
-```
-
-### Consumer — Member store-first + ESP-NOW (state_machine.c)
-
-```
-Line  897  if (can_send) {                          // ← only true in TDMA slot (DATA phase)
-Line  900    metrics_get_sensor_data(&payload)       // reads mailbox
-Line  935    storage_manager_write_compressed(...)    // SPIFFS write
-Line  947    esp_now_manager_send_data(...)           // ESP-NOW to CH
-```
-
-### Mailbox (metrics.c)
-
-```
-Line  65   static sensor_payload_t current_sensor_data   // single-slot global
-Line  70   void metrics_set_sensor_data(...)              // mutex lock → memcpy → unlock
-Line  80   void metrics_get_sensor_data(...)              // mutex lock → memcpy → unlock
+Line  950    sensor_payload_t payload = {0}         // local payload assembly
+Line  1020   storage_manager_write_compressed(...)  // same-iteration MSLG write
+Line  193    const sensor_payload_t *payload = ...  // ESP-NOW RX decode on CH
 ```
 
 ---
@@ -365,19 +331,12 @@ Line  80   void metrics_get_sensor_data(...)              // mutex lock → memc
 │  │  └──┬───┘  └──┬───┘  └──┬───┘  └──┬───┘  └──┬───┘  └──┬───┘     │  │
 │  │     └─────────┴─────────┴─────────┴─────────┴─────────┘          │  │
 │  │                              │                                     │  │
-│  │                     metrics_set_sensor_data()                      │  │
+│  │              sensor_payload_t payload (local to app_main)          │  │
 │  │                              │                                     │  │
 │  └──────────────────────────────┼─────────────────────────────────────┘  │
 │                                 │                                        │
-│                    ┌────────────▼────────────┐                           │
-│                    │    metrics.c mailbox     │                           │
-│                    │  (mutex-protected RAM)   │                           │
-│                    └────────────┬────────────┘                           │
-│                                 │                                        │
-│                        metrics_get_sensor_data()                         │
-│                                 │                                        │
 │  ┌──────────────────────────────┼─────────────────────────────────────┐  │
-│  │  STATE MACHINE               ▼           DATA phase ONLY           │  │
+│  │  DATA PATH                   ▼           DATA phase ONLY           │  │
 │  │                                                                    │  │
 │  │  STELLAR Phase:              DATA Phase:                           │  │
 │  │  • BLE scan ✅                • ESP-NOW TX/RX ✅                   │  │

@@ -188,9 +188,9 @@ At every transition the firmware prints a boxed diagnostic:
 ```
 Main Loop (2 s)
   │
-  ▼ metrics_set_sensor_data()   ← fresh random mock / real sensor values
+  ▼ Build local sensor_payload_t ← fresh random mock / real sensor values
   │
-  ▼ seq_num++                   ← unique every 2 s
+  ▼ seq_num++                    ← unique every 2 s
 
 State Machine (100 ms tick, DATA phase, in TDMA slot)
   │

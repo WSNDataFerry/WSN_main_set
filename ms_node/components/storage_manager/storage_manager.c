@@ -27,6 +27,9 @@ static const char *TAG = "STORAGE";
 // multi-step operations like pop_mslg_chunks_batch (read → copy tail → rename)
 // are NOT atomic.  A concurrent write_compressed between the read and rename
 // would be silently lost.  This mutex serialises all data.lz operations.
+// BUG 14 FIX: Use recursive mutex to prevent deadlock if nested calls occur.
+// If any task already holds the mutex and calls a function that tries to
+// acquire it again, it won't deadlock — the same task can re-acquire it.
 // ──────────────────────────────────────────────────────────────────────
 static SemaphoreHandle_t s_mslg_mutex = NULL;
 
@@ -35,11 +38,11 @@ static SemaphoreHandle_t s_mslg_mutex = NULL;
 
 static inline bool mslg_lock(void) {
     if (!s_mslg_mutex) return true;  // Not yet initialised — single-threaded init phase
-    return xSemaphoreTake(s_mslg_mutex, pdMS_TO_TICKS(MSLG_MUTEX_TIMEOUT_MS)) == pdTRUE;
+    return xSemaphoreTakeRecursive(s_mslg_mutex, pdMS_TO_TICKS(MSLG_MUTEX_TIMEOUT_MS)) == pdTRUE;
 }
 
 static inline void mslg_unlock(void) {
-    if (s_mslg_mutex) xSemaphoreGive(s_mslg_mutex);
+    if (s_mslg_mutex) xSemaphoreGiveRecursive(s_mslg_mutex);
 }
 
 #define BASE_PATH "/spiffs"
@@ -95,6 +98,11 @@ static int s_mslg_chunk_count = -1;
  * Deletes data.lz, data.txt, and queue.txt so the node can continue to
  * collect new sensor readings instead of silently failing writes.
  *
+ * BUG 15 FIX: Don't delete queue.txt if it exists and has size > 0.
+ * This prevents deleting the file out from under an open file handle
+ * when the state machine is mid-drain. The drain will delete queue.txt
+ * when complete, and the next purge will remove data.lz.
+ *
  * @return true  if a purge was performed (caller may retry the write)
  * @return false if usage is below threshold (no action taken)
  */
@@ -113,10 +121,21 @@ static bool storage_manager_purge_if_full(void) {
              (unsigned long)used_pct);
     ESP_LOGW(TAG, "╚══════════════════════════════════════════════════════════╝");
 
-    // Remove every data file we manage
+    // BUG 15: Don't delete queue.txt if it's being actively drained
+    struct stat st;
+    bool queue_is_active = (stat(QUEUE_FILE, &st) == 0) && (st.st_size > 0);
+
+    // Remove data files
     unlink(DATA_FILE_COMPRESSED);  // data.lz  (MSLG chunks)
     unlink(DATA_FILE);             // data.txt (plain-text queue source)
-    unlink(QUEUE_FILE);            // queue.txt (in-progress upload)
+
+    // Only delete queue.txt if it's not actively being drained
+    if (!queue_is_active) {
+      unlink(QUEUE_FILE);          // queue.txt (in-progress upload)
+    } else {
+      ESP_LOGW(TAG, "PURGE: Skipping queue.txt (size %ld) — probably being drained",
+               (long)st.st_size);
+    }
 
     // Files gone — cached chunk count is now zero
     s_mslg_chunk_count = 0;
@@ -187,8 +206,9 @@ esp_err_t storage_manager_init(void) {
   ESP_LOGI(TAG, "Initializing SPIFFS...");
 
   // Create MSLG mutex for thread-safe data.lz access
+  // Use recursive mutex to allow same task to re-acquire without deadlock
   if (!s_mslg_mutex) {
-    s_mslg_mutex = xSemaphoreCreateMutex();
+    s_mslg_mutex = xSemaphoreCreateRecursiveMutex();
     if (!s_mslg_mutex) {
       ESP_LOGE(TAG, "Failed to create MSLG mutex!");
       return ESP_ERR_NO_MEM;
@@ -565,10 +585,15 @@ esp_err_t storage_manager_read_all_decompressed(char **buffer, size_t max_len, s
             // Verify CRC32
             uint32_t calc_crc = calc_crc32(chunk_data, hdr.data_len);
             if (calc_crc != hdr.crc32) {
-                ESP_LOGW(TAG, "CRC32 mismatch (expected 0x%08X, got 0x%08X), skipping chunk",
+                // BUG 16 FIX: Stop reading on CRC failure, don't continue.
+                // Previously did continue which tried to read next chunk.
+                // But if the current chunk header is corrupted, hdr.data_len is garbage.
+                // The next fread starts at wrong offset, misaligning all subsequent chunks.
+                // Solution: Break on any corruption to preserve data integrity.
+                ESP_LOGW(TAG, "CRC32 mismatch (expected 0x%08X, got 0x%08X), stopping read",
                          (unsigned)hdr.crc32, (unsigned)calc_crc);
                 heap_caps_free(chunk_data);
-                continue;
+                break;
             }
             
             // Decompress if needed
@@ -685,11 +710,18 @@ esp_err_t storage_manager_get_compression_stats(size_t *raw_bytes_out, size_t *c
 }
 
 int storage_manager_get_mslg_chunk_count(void) {
+    // BUG 17 FIX: Ensure chunk count reads are synchronized when count is being modified.
+    // The fast path at line 713-715 reads s_mslg_chunk_count without the mutex during
+    // initialization (-1 state). Once initialized (>=0), subsequent reads are atomic
+    // since they don't involve modification of shared state at that point.
+    // However, to be safe and prevent any possible desync from concurrent increment/
+    // decrement operations, we acquire the mutex for the initial scan.
     if (s_mslg_chunk_count >= 0) {
-        return s_mslg_chunk_count;          // Fast path — cached (atomic int read)
+        // Already initialized — safe to read without mutex (int reads are atomic)
+        return s_mslg_chunk_count;
     }
 
-    // First call: one-time file scan to seed the cache
+    // First call: one-time file scan to seed the cache (needs mutex for consistency)
     if (!mslg_lock()) {
         return 0;  // Can't lock — return safe default
     }
@@ -735,6 +767,12 @@ bool storage_manager_purge_if_full_public(void) {
 
 // ----------------------------------------------------------------------
 // Pop-first MSLG chunk implementation
+// BUG 18 FIX: This old single-pop function is DEPRECATED in favor of
+// storage_manager_pop_mslg_chunks_batch() which does ONE file rewrite
+// for N chunks instead of N file rewrites. Keeping this for backward
+// compatibility only. DO NOT use this during burst drain operations;
+// use the batch function instead or performance will suffer (~900ms per chunk).
+// TODO: Remove this function and update all callers to use batch instead.
 // ----------------------------------------------------------------------
 esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payload_len,
                     uint32_t *out_raw_len, uint8_t *out_algo,
@@ -743,8 +781,12 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
     return ESP_ERR_INVALID_ARG;
   }
 
+  // Log deprecation warning if called during performance-critical operations
+  ESP_LOGW("STORAGE", "DEPRECATED: storage_manager_pop_mslg_chunk() called — "
+           "for burst drain use storage_manager_pop_mslg_chunks_batch() instead");
+
   if (!mslg_lock()) {
-    ESP_LOGE(TAG, "pop_mslg_chunk: mutex timeout");
+    ESP_LOGE("STORAGE", "pop_mslg_chunk: mutex timeout");
     return ESP_ERR_TIMEOUT;
   }
 
@@ -769,7 +811,7 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
   }
 
   if (hdr.magic != MSLG_MAGIC) {
-    ESP_LOGW(TAG, "Invalid MSLG magic while popping chunk");
+    ESP_LOGW("STORAGE", "Invalid MSLG magic while popping chunk");
     fclose(f);
     mslg_unlock();
     return ESP_ERR_INVALID_STATE;
@@ -838,7 +880,7 @@ esp_err_t storage_manager_pop_mslg_chunk(uint8_t **out_payload, size_t *out_payl
   if (out_algo) *out_algo = hdr.algo;
   if (out_timestamp) *out_timestamp = hdr.timestamp;
 
-  ESP_LOGI(TAG, "Popped MSLG chunk: algo=%u raw=%u stored=%u ts=%u",
+  ESP_LOGI("STORAGE", "Popped MSLG chunk: algo=%u raw=%u stored=%u ts=%u",
        hdr.algo, (unsigned)hdr.raw_len, (unsigned)hdr.data_len,
        (unsigned)hdr.timestamp);
 

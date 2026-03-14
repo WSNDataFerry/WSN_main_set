@@ -15,7 +15,6 @@
 static const char *TAG = "METRICS";
 
 static node_metrics_t current_metrics = {0};
-static sensor_payload_t current_sensor_data = {0};
 // static adc_oneshot_unit_handle_t adc_handle = NULL; // Removed: Handled by
 // battery.c
 static bool metrics_initialized = false;
@@ -66,26 +65,6 @@ void metrics_set_weights(float battery, float uptime, float trust,
 
   if (metrics_mutex)
     xSemaphoreGiveRecursive(metrics_mutex);
-}
-
-void metrics_set_sensor_data(const sensor_payload_t *data) {
-  if (data) {
-    if (metrics_mutex)
-      xSemaphoreTakeRecursive(metrics_mutex, portMAX_DELAY);
-    current_sensor_data = *data;
-    if (metrics_mutex)
-      xSemaphoreGiveRecursive(metrics_mutex);
-  }
-}
-
-void metrics_get_sensor_data(sensor_payload_t *data) {
-  if (data) {
-    if (metrics_mutex)
-      xSemaphoreTakeRecursive(metrics_mutex, portMAX_DELAY);
-    *data = current_sensor_data;
-    if (metrics_mutex)
-      xSemaphoreGiveRecursive(metrics_mutex);
-  }
 }
 
 float metrics_read_battery(void) {
@@ -503,14 +482,6 @@ void metrics_init(void) {
   }
 
   metrics_initialized = true;
-
-  // Seed sensor data with valid timestamp so TDMA sends work immediately
-  // (before the sensor task's 60s env_interval first fires)
-  extern uint32_t g_node_id;
-  current_sensor_data.node_id = g_node_id;
-  current_sensor_data.timestamp_ms = (uint64_t)(esp_timer_get_time() / 1000ULL);
-  ESP_LOGI(TAG, "Seeded sensor_data: node_id=%lu, timestamp_ms=%llu", g_node_id,
-           current_sensor_data.timestamp_ms);
 
   ESP_LOGI(TAG, "Metrics system initialized with STELLAR extensions");
 }

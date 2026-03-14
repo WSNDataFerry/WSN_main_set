@@ -198,16 +198,6 @@ typedef struct {
 } sensor_payload_t;
 
 /**
- * @brief Set the latest sensor data payload
- */
-void metrics_set_sensor_data(const sensor_payload_t *data);
-
-/**
- * @brief Get the latest sensor data payload
- */
-void metrics_get_sensor_data(sensor_payload_t *data);
-
-/**
  * @brief Link quality utility function: power utility
  * φ_linkq(l) = l^(1/γ)
  */

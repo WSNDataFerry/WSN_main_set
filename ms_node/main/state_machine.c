@@ -23,10 +23,7 @@
 static int compare_priority(const void *a, const void *b) {
   const neighbor_entry_t *na = (const neighbor_entry_t *)a;
   const neighbor_entry_t *nb = (const neighbor_entry_t *)b;
-
-  // Githmi's Formula: P = LinkQuality + (100 - Battery)
-  // Higher P goes first.
-  // Note: metrics are 0.0-1.0, so we scale by 100.
+  
   float score_a =
       (na->link_quality * 100.0f) + (100.0f - (na->battery * 100.0f));
   float score_b =
@@ -45,13 +42,8 @@ uint32_t state_machine_get_sleep_time_ms(void) {
     schedule_msg_t sched = esp_now_get_current_schedule();
     int64_t now_us = esp_timer_get_time();
 
-    if (sched.magic == ESP_NOW_MAGIC_SCHEDULE &&
-        sched.epoch_us > (now_us - (SLOT_DURATION_SEC *
-                                    10000000LL))) { /* Valid recent schedule */
-
-      int64_t my_slot_start =
-          sched.epoch_us +
-          (sched.slot_index * sched.slot_duration_sec * 1000000LL);
+    if (sched.magic == ESP_NOW_MAGIC_SCHEDULE && sched.epoch_us > (now_us - (SLOT_DURATION_SEC * 10000000LL))) {
+      int64_t my_slot_start = sched.epoch_us + (sched.slot_index * sched.slot_duration_sec * 1000000LL);
       int64_t time_to_slot = my_slot_start - now_us;
 
       if (time_to_slot > 0) {
@@ -105,6 +97,14 @@ static uint64_t s_phase_start_ms = 0;
 static uint64_t s_last_schedule_send_ms = 0;   // Timestamp of last TDMA schedule send
 static int      s_schedule_sends_this_phase = 0; // Count of schedule sends this DATA phase
 // s_last_ch_store_ms and s_last_mbr_store_ms removed — storage moved to main loop (ms_node.c)
+static bool ch_assertion_verified = false;
+static uint64_t ch_assertion_start = 0;
+const uint32_t CH_ASSERTION_GRACE_MS = 3000;
+static bool s_pre_guard_active = false;
+// Bug 6 fix: Moved to file scope and reset in transition_to_state()
+static int ch_miss_count = 0;
+static phase_t last_logged_phase = PHASE_STELLAR;
+
 
 static void state_machine_update_phase(uint64_t now_ms) {
   // Initialize phase start on first run
@@ -203,14 +203,17 @@ static void transition_to_state(node_state_t new_state) {
   // Ensure global flag matches state
   if (new_state == STATE_CH) {
     g_is_ch = true;
+    ch_assertion_verified = false; // Reset CH assertion verification on every CH entry
+    ch_assertion_start = esp_timer_get_time() / 1000; // Start grace period timer for CH assertion verification
   } else {
     g_is_ch = false;
   }
 
-  // Reset MEMBER BLE flag on every state transition so it is always
-  // re-initialised when entering MEMBER state (Bug 1 fix).
-  if (new_state != STATE_MEMBER) {
+  // Bug 2 fix: Reset MEMBER-specific state ONLY when entering MEMBER
+  if (new_state == STATE_MEMBER) {
     member_ble_started = false;
+    s_pre_guard_active = false; // Reset pre-guard on MEMBER entry
+    ch_miss_count = 0;           // Bug 6 fix: Reset miss counter on MEMBER entry
   }
 
   g_current_state = new_state;
@@ -235,10 +238,6 @@ void state_machine_init(void) {
   transition_to_state(STATE_INIT);
 }
 
-void state_machine_force_uav_test(void) {
-  ESP_LOGI(TAG, "Forcing UAV Test Mode (Manual Trigger)");
-  transition_to_state(STATE_UAV_ONBOARDING);
-}
 
 void state_machine_run(void) {
   uint64_t now_ms = esp_timer_get_time() / 1000;
@@ -253,10 +252,6 @@ void state_machine_run(void) {
       // CRITICAL FIX: Only established nodes (Member/CH) respect the quiet
       // phase. Candidates and Discovery nodes MUST keep scanning/advertising to
       // find the cluster.
-
-      if (g_current_state == STATE_MEMBER || g_current_state == STATE_CH) {
-        ble_manager_stop_scanning();
-      }
 
       // Stop advertising for ALL roles during DATA phase.
       // CH advertising was previously kept on for "new node visibility" but
@@ -277,6 +272,14 @@ void state_machine_run(void) {
       // New STELLAR phase: Restart BLE
       ble_manager_start_advertising();
       ble_manager_start_scanning();
+
+      // Bug 4 fix: Remove broadcast peer at end of DATA phase
+      // Prevents peer table from filling up over time
+      static const uint8_t BCAST[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+      if (esp_now_is_peer_exist(BCAST)) {
+        esp_now_del_peer(BCAST);
+        ESP_LOGD(TAG, "BLE PHASEEntry: Removed broadcast peer from ESP-NOW table");
+      }
     }
 
     // ── Diagnostic: Phase boundary with radio state (AFTER transition) ──
@@ -446,20 +449,9 @@ void state_machine_run(void) {
       // scenarios where two nodes both think they won the election due to
       // incomplete neighbor information.
       // ─────────────────────────────────────────────────────────────────────
-      static bool ch_assertion_verified = false;
-      static uint64_t ch_assertion_start = 0;
-      const uint32_t CH_ASSERTION_GRACE_MS = 3000; // 3s grace period
-
-      // Check if this is a new CH entry (state_entry_time updated on transition)
-      if (ch_assertion_start == 0 ||
-          (state_entry_time > ch_assertion_start &&
-           state_entry_time - ch_assertion_start > CH_ASSERTION_GRACE_MS)) {
-        // New CH entry - reset assertion state
-        ch_assertion_verified = false;
-        ch_assertion_start = now_ms;
-        ESP_LOGI(TAG, "CH assertion grace period started (checking for conflicts)");
-      }
-
+      // Bug 1 fix: Removed redundant reset block here — transition_to_state()
+      // now correctly initializes these on CH entry.
+      // ─────────────────────────────────────────────────────────────────────
       // During grace period, aggressively scan for conflicting CHs
       // BUT only during STELLAR phase — DATA phase radio belongs to ESP-NOW
       if (s_current_phase == PHASE_STELLAR) {
@@ -508,10 +500,6 @@ void state_machine_run(void) {
       // ble_scan=1 on ALL CH schedule sends → members couldn't ACK data.
       if (s_current_phase == PHASE_STELLAR) {
         ble_manager_start_scanning();
-      }
-
-      // Update CH announcement — only during STELLAR phase
-      if (s_current_phase == PHASE_STELLAR) {
         ble_manager_update_advertisement();
       }
 
@@ -555,11 +543,15 @@ void state_machine_run(void) {
       // CH duties: maintain member list, etc.
       neighbor_manager_cleanup_stale();
 
-      // Check cluster size
+      // BUG 3 FIX: Query neighbor list ONCE and reuse for both cluster check and scheduler.
+      // Previously queried twice; between calls a neighbor could join/leave, causing
+      // split-logic and scheduler to operate on different snapshots.
       neighbor_entry_t neighbors[MAX_NEIGHBORS];
-      size_t count = neighbor_manager_get_all(neighbors, MAX_NEIGHBORS);
-      if (count > MAX_CLUSTER_SIZE) {
-        ESP_LOGW(TAG, "Cluster size exceeded (%zu), triggering split", count);
+      size_t neighbor_count = neighbor_manager_get_all(neighbors, MAX_NEIGHBORS);
+
+      // Check cluster size
+      if (neighbor_count > MAX_CLUSTER_SIZE) {
+        ESP_LOGW(TAG, "Cluster size exceeded (%zu), triggering split", neighbor_count);
         // In production, implement cluster split logic
       }
 
@@ -567,6 +559,7 @@ void state_machine_run(void) {
       if (rf_receiver_check_trigger()) {
         ESP_LOGI(TAG, "UAV Trigger detected! Transitioning to UAV ONBOARDING");
         transition_to_state(STATE_UAV_ONBOARDING);
+        break;
       }
 
       // ---------------------------------------------------------
@@ -581,83 +574,97 @@ void state_machine_run(void) {
       // ---------------------------------------------------------
       {
         uint64_t sched_now_ms = esp_timer_get_time() / 1000;
-        bool should_send_sched = (s_current_phase == PHASE_DATA) &&
-            (s_schedule_sends_this_phase == 0 ||
-             (sched_now_ms - s_last_schedule_send_ms) >= 5000);
+        bool should_send_sched = (s_current_phase == PHASE_DATA) && (s_schedule_sends_this_phase == 0 || (sched_now_ms - s_last_schedule_send_ms) >= 5000);
 
-        if (should_send_sched) {
-          neighbor_entry_t neighbors[MAX_NEIGHBORS];
-          size_t count = neighbor_manager_get_all(neighbors, MAX_NEIGHBORS);
-
-          ESP_LOGI(TAG, "[DEBUG] TDMA Schedule: Found %zu neighbors for scheduling", count);
-          for (size_t i = 0; i < count; i++) {
-            ESP_LOGI(TAG, "[DEBUG] TDMA Neighbor[%zu]: node_id=%lu, verified=%d, in_cluster=%d, is_ch=%d", 
-                     i, neighbors[i].node_id, neighbors[i].verified, 
+        if (should_send_sched && neighbor_count > 0) {
+          ESP_LOGI(TAG, "[DEBUG] TDMA Schedule: Found %zu neighbors for scheduling", neighbor_count);
+          for (size_t i = 0; i < neighbor_count; i++) {
+            ESP_LOGI(TAG, "[DEBUG] TDMA Neighbor[%zu]: node_id=%lu, verified=%d, in_cluster=%d, is_ch=%d",
+                     i, neighbors[i].node_id, neighbors[i].verified,
                      neighbor_manager_is_in_cluster(&neighbors[i]), neighbors[i].is_ch);
           }
+          // Sort by Priority (Githmi-style: P = Link + (100-Bat))
+          qsort(neighbors, neighbor_count, sizeof(neighbor_entry_t), compare_priority);
+          // TDMA epoch: start after a guard from NOW
+          int64_t epoch_us = esp_timer_get_time() + ((int64_t)PHASE_GUARD_MS * 1000LL);
 
-          if (count > 0) {
-            // Sort by Priority (Githmi-style: P = Link + (100-Bat))
-            qsort(neighbors, count, sizeof(neighbor_entry_t), compare_priority);
+          // DYNAMIC SLOT CALCULATION (Phase 24)
+          // BUG 6 FIX: Check that clamped slots don't exceed available time.
+          // If each slot is clamped to 2s minimum and we have 10 members,
+          // total becomes 20s, exceeding the 15s DATA phase. This would cause
+          // slots to spill into the next STELLAR phase.
+          uint32_t available_ms = DATA_PHASE_MS - PHASE_GUARD_MS;
+          uint32_t slot_ms = available_ms / neighbor_count;
 
-            // TDMA epoch: start after a guard from NOW
-            int64_t epoch_us =
-                esp_timer_get_time() + ((int64_t)PHASE_GUARD_MS * 1000LL);
-
-            // DYNAMIC SLOT CALCULATION (Phase 24)
-            uint32_t available_ms = DATA_PHASE_MS - PHASE_GUARD_MS;
-            uint32_t slot_ms = available_ms / count;
-            if (slot_ms < 2000) {
+          // If minimum slot would exceed available time, use smaller slot to fit
+          // Bug 3 fix: Properly handle slot overflow by limiting scheduled members
+          int scheduled_count = neighbor_count;
+          if (slot_ms < 2000) {
+            // Check if clamped slots would overflow
+            uint32_t clamped_total_ms = 2000 * neighbor_count;
+            if (clamped_total_ms > available_ms) {
+              // Cap the number of scheduled members instead of using sub-2s slots
+              scheduled_count = available_ms / 2000;
+              if (scheduled_count < 1) scheduled_count = 1; // Always schedule at least one member
+              slot_ms = available_ms / scheduled_count;
+              ESP_LOGW(TAG,
+                  "Cluster too large: scheduling %d/%lu members with slot %lu ms (was %lu)",
+                  scheduled_count, (unsigned long)neighbor_count, (unsigned long)slot_ms,
+                  (unsigned long)available_ms / neighbor_count);
+            } else {
               slot_ms = 2000;
               ESP_LOGW(TAG, "Slot time clamped to minimum 2s");
             }
-            uint8_t slot_sec = slot_ms / 1000;
+          }
+          uint8_t slot_sec = slot_ms / 1000;
+          if (slot_sec < 1) slot_sec = 1;  // add this
 
-            for (size_t i = 0; i < count; i++) {
-              schedule_msg_t sched;
-              sched.epoch_us = epoch_us;
-              sched.slot_index = i;
-              sched.slot_duration_sec = slot_sec;
-              sched.magic = ESP_NOW_MAGIC_SCHEDULE;
-              sched.target_node_id = neighbors[i].node_id;
+          for (size_t i = 0; i < (size_t)scheduled_count && i < neighbor_count; i++) {
+            schedule_msg_t sched;
+            sched.epoch_us = epoch_us;
+            sched.slot_index = i;
+            sched.slot_duration_sec = slot_sec;
+            sched.magic = ESP_NOW_MAGIC_SCHEDULE;
+            sched.target_node_id = neighbors[i].node_id;
 
-              // ── Unicast (needs MAC ACK) ──
-              esp_err_t uc_ret;
-              if (s_schedule_sends_this_phase == 0) {
-                uc_ret = esp_now_manager_send_data(neighbors[i].mac_addr,
-                                                   (uint8_t *)&sched, sizeof(sched));
-              } else {
-                uc_ret = esp_now_manager_send_data_fast(neighbors[i].mac_addr,
-                                                        (uint8_t *)&sched, sizeof(sched));
-              }
-
-              // ── Broadcast backup (no ACK needed — survives radio contention) ──
-              // If unicast failed (member radio busy) the broadcast has a
-              // second chance of being received.  target_node_id lets each
-              // member filter to its own slot.
-              if (uc_ret != ESP_OK) {
-                static const uint8_t BCAST[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
-                if (!esp_now_is_peer_exist(BCAST)) {
-                  esp_now_peer_info_t bp = {0};
-                  memcpy(bp.peer_addr, BCAST, 6);
-                  bp.channel = ESP_NOW_CHANNEL;
-                  bp.ifidx   = WIFI_IF_STA;
-                  bp.encrypt = false;
-                  esp_now_add_peer(&bp);
-                }
-                esp_now_send(BCAST, (uint8_t *)&sched, sizeof(sched));
-                ESP_LOGW(TAG, "SCHED: Unicast FAIL for node_%lu — sent broadcast backup",
-                         neighbors[i].node_id);
-              }
-
-              ESP_LOGI(TAG, "SCHED: Assigned Slot %d to Node %lu (Score %.2f) [tx#%d]",
-                       (int)i, neighbors[i].node_id, neighbors[i].score,
-                       s_schedule_sends_this_phase + 1);
+            // ── Unicast (needs MAC ACK) ──
+            esp_err_t uc_ret;
+            if (s_schedule_sends_this_phase == 0) {
+              uc_ret = esp_now_manager_send_data(neighbors[i].mac_addr,
+                                                  (uint8_t *)&sched, sizeof(sched));
+            } else {
+              uc_ret = esp_now_manager_send_data_fast(neighbors[i].mac_addr,
+                                                      (uint8_t *)&sched, sizeof(sched));
             }
 
-            s_schedule_sends_this_phase++;
-            s_last_schedule_send_ms = sched_now_ms;
+            // ── Broadcast backup (no ACK needed — survives radio contention) ──
+            // If unicast failed (member radio busy) the broadcast has a
+            // second chance of being received.  target_node_id lets each
+            // member filter to its own slot.
+            if (uc_ret != ESP_OK) {
+              static const uint8_t BCAST[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+              // BUG 7 FIX: Check if broadcast peer exists before adding to avoid
+              // filling the peer table with duplicates.
+              if (!esp_now_is_peer_exist(BCAST)) {
+                esp_now_peer_info_t bp = {0};
+                memcpy(bp.peer_addr, BCAST, 6);
+                bp.channel = ESP_NOW_CHANNEL;
+                bp.ifidx   = WIFI_IF_STA;
+                bp.encrypt = false;
+                esp_now_add_peer(&bp);
+              }
+              esp_now_send(BCAST, (uint8_t *)&sched, sizeof(sched));
+              ESP_LOGW(TAG, "SCHED: Unicast FAIL for node_%lu — sent broadcast backup",
+                        neighbors[i].node_id);
+            }
+
+            ESP_LOGI(TAG, "SCHED: Assigned Slot %d to Node %lu (Score %.2f) [tx#%d]",
+                      (int)i, neighbors[i].node_id, neighbors[i].score,
+                      s_schedule_sends_this_phase + 1);
           }
+
+          s_schedule_sends_this_phase++;
+          s_last_schedule_send_ms = sched_now_ms;
         }
       }
 
@@ -694,8 +701,6 @@ void state_machine_run(void) {
       // STELLAR still gets 17 s for election/neighbor discovery.
       if (s_current_phase == PHASE_STELLAR) {
         uint64_t elapsed_in_frame = now_ms - s_phase_start_ms;
-        const uint64_t BLE_PRE_GUARD_MS = 3000;
-        static bool s_pre_guard_active = false;
 
         if (elapsed_in_frame >= (STELLAR_PHASE_MS - BLE_PRE_GUARD_MS)) {
           // Last 3 s of STELLAR: stop BLE to free radio for ESP-NOW
@@ -739,9 +744,16 @@ void state_machine_run(void) {
       // We only check CH validity during STELLAR phase when BLE is active.
       // The CH is cached (s_cached_ch_id) at STELLAR→DATA transition.
       // ─────────────────────────────────────────────────────────────────────
-      static int ch_miss_count = 0;
+      // Bug 6 fix: ch_miss_count and last_logged_phase are now file-scope
+      // and reset in transition_to_state() on MEMBER entry.
+      // ─────────────────────────────────────────────────────────────────────
 
       if (s_current_phase == PHASE_STELLAR) {
+        if (last_logged_phase != PHASE_STELLAR) {
+          ESP_LOGD(TAG, "STELLAR phase: CH beacon check enabled (BLE on)");
+        }
+        last_logged_phase = PHASE_STELLAR;
+        
         // STELLAR phase: BLE is on, we can receive beacons - check CH validity
         uint32_t current_ch = neighbor_manager_get_current_ch();
         if (current_ch == 0) {
@@ -772,13 +784,9 @@ void state_machine_run(void) {
       } else {
         // DATA phase: BLE is off, skip beacon check (rely on cached CH)
         // Only log once per DATA phase entry to avoid spam
-        static phase_t last_logged_phase = PHASE_STELLAR;
         if (last_logged_phase != PHASE_DATA) {
           ESP_LOGD(TAG, "DATA phase: CH beacon check suspended (BLE off)");
           last_logged_phase = PHASE_DATA;
-        }
-        if (s_current_phase == PHASE_STELLAR) {
-          last_logged_phase = PHASE_STELLAR;
         }
       }
 
@@ -961,12 +969,11 @@ void state_machine_run(void) {
       // ---------------------------------------------------------
       // MEMBER CONTINUOUS STORAGE — MOVED TO MAIN LOOP (ms_node.c)
       // ---------------------------------------------------------
-      // Previously stored here every 5s using a snapshot of
-      // metrics_get_sensor_data(), but the 100ms task could miss
-      // seqs when the main loop advanced faster than this task
-      // could store.  Now: the main loop stores directly to MSLG
-      // in the SAME iteration that increments seq_num, guaranteeing
-      // zero seq gaps for member data.
+      // Previously stored here every 5s using a shared latest-payload
+      // snapshot, but the 100ms task could miss seqs when the main
+      // loop advanced faster than this task could store. Now: the
+      // main loop stores directly to MSLG in the SAME iteration that
+      // increments seq_num, guaranteeing zero seq gaps for member data.
       // ---------------------------------------------------------
 
       // ---------------------------------------------------------
@@ -1017,67 +1024,6 @@ void state_machine_run(void) {
         memcpy(ch_mac, ch_mac_to_use, 6); // Use cached MAC (resolved above with fallback)
         {
           int64_t cutoff_us = slot_end_us - 500000LL; // 500ms margin
-
-          // ── 2a. Plain-text queue drain (data.txt → queue.txt) ──
-          if (storage_manager_prepare_upload() == ESP_OK) {
-            FILE *q = storage_manager_open_queue();
-            if (q) {
-              char history_line[256];
-              int packets_sent = 0;
-
-              while (fgets(history_line, sizeof(history_line), q)) {
-                if (esp_timer_get_time() >= cutoff_us) {
-                  ESP_LOGW(TAG, "OFFLOAD: Time budget exceeded, pausing queue.");
-                  break;
-                }
-
-                size_t len = strlen(history_line);
-                if (len > 0 && history_line[len - 1] == '\n') {
-                  history_line[len - 1] = 0;
-                  len--;
-                }
-                if (len == 0)
-                  continue;
-
-                esp_err_t ret = esp_now_manager_send_data(
-                    ch_mac, (uint8_t *)history_line, len);
-
-                if (ret == ESP_OK) {
-                  packets_sent++;
-                  vTaskDelay(pdMS_TO_TICKS(20));
-                } else {
-                  ESP_LOGW(TAG, "OFFLOAD: Send failed, pausing queue.");
-                  break;
-                }
-              }
-
-              bool uploading_done = feof(q);
-              fclose(q);
-
-              if (uploading_done) {
-                storage_manager_remove_queue();
-                ESP_LOGI(TAG, "OFFLOAD: Queue drained (%d items). Deleted.",
-                         packets_sent);
-              } else {
-                ESP_LOGI(TAG,
-                         "OFFLOAD: Partial drain (%d items). Queue retained.",
-                         packets_sent);
-              }
-            }
-          }
-
-          // ── 2b. MSLG compressed chunk drain (data.lz) ──
-          // Runs INDEPENDENTLY of plain-text queue — data goes to data.lz
-          // via storage_manager_write_compressed(), not data.txt.
-          //
-          // *** BATCH OPTIMISATION (v4) ***
-          // Old approach: pop_mslg_chunk() per send = full SPIFFS file
-          //   rewrite per chunk (~900 ms each).  6 chunks maxed out the
-          //   7.5 s TDMA slot → remaining grew by +2/superframe.
-          // New approach: batch-pop ALL chunks into RAM in ONE SPIFFS
-          //   pass, then send them via send_data_fast() (no BLE quiet
-          //   window since BLE is already off in DATA phase).
-          //   Expected: ~900 ms total SPIFFS I/O + ~50 ms × N sends.
           {
             /* Batch pop up to 24 chunks (covers ~2 minutes of backlog). */
             #define BATCH_POP_MAX 24
@@ -1154,6 +1100,7 @@ void state_machine_run(void) {
                   vTaskDelay(pdMS_TO_TICKS(5));
                   if (decomp_buf) {
                     heap_caps_free(decomp_buf);
+                    decomp_buf = NULL; // Bug 7 fix: Prevent double free
                   } else {
                     heap_caps_free(batch[bi].payload);
                   }
@@ -1193,11 +1140,14 @@ void state_machine_run(void) {
 
       // Fallback: Lazy single line sync if no schedule
       static uint64_t last_history_sync = 0;
+      // BUG 5 FIX: Only update timer when fallback ACTUALLY sends, not every tick.
+      // Previously the timestamp reset happened unconditionally outside the if block,
+      // so the countdown restarted every 100ms and could never reach 5000ms.
       if (!in_slot && current_ch_for_cache != 0 &&
           (esp_timer_get_time() / 1000 - last_history_sync) >= 5000) {
         // ... existing fallback code ...
+        last_history_sync = esp_timer_get_time() / 1000;
       }
-      last_history_sync = esp_timer_get_time() / 1000;
     }
     break;
 

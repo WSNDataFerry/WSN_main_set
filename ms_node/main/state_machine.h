@@ -19,10 +19,6 @@ void state_machine_init(void);
 void state_machine_run(void);
 const char *state_machine_get_state_name(void);
 
-/**
- * @brief Force transition to UAV Onboarding state (for testing)
- */
-void state_machine_force_uav_test(void);
 extern node_state_t g_current_state;
 extern bool g_is_ch;
 extern uint32_t g_node_id;

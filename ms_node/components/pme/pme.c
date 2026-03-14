@@ -18,8 +18,7 @@ static pme_mode_t s_mode = PME_MODE_NORMAL;
 
 static uint64_t s_last_tick_ms = 0;
 
-static pme_mode_t compute_mode(uint8_t pct)
-{
+static pme_mode_t compute_mode(uint8_t pct) {
     if (pct >= s_cfg.th.normal_min_pct) {
         return PME_MODE_NORMAL;
     }
@@ -29,8 +28,7 @@ static pme_mode_t compute_mode(uint8_t pct)
     return PME_MODE_CRITICAL;
 }
 
-esp_err_t pme_init(const pme_config_t *cfg)
-{
+esp_err_t pme_init(const pme_config_t *cfg) {
     if (!cfg) return ESP_ERR_INVALID_ARG;
 
     s_cfg = *cfg;
@@ -53,8 +51,7 @@ esp_err_t pme_init(const pme_config_t *cfg)
     return ESP_OK;
 }
 
-void pme_tick(void)
-{
+void pme_tick(void) {
     if (!s_inited) return;
     if (!s_use_fake) return;   // real battery is driving us now
 
@@ -76,13 +73,11 @@ void pme_tick(void)
     s_mode = compute_mode(s_batt_pct);
 }
 
-uint8_t pme_get_batt_pct(void)
-{
+uint8_t pme_get_batt_pct(void) {
     return s_batt_pct;
 }
 
-pme_mode_t pme_get_mode(void)
-{
+pme_mode_t pme_get_mode(void) {
     return s_mode;
 }
 

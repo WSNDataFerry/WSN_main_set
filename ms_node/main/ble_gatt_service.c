@@ -1,6 +1,8 @@
 #include "ble_gatt_service.h"
-#include "logger.h"
 #include "sensor_config.h"
+#include "storage_manager.h"
+#include <sys/time.h>
+#include "esp_mac.h"
 
 #include "esp_bt.h"
 #include "esp_bt_main.h"
@@ -197,11 +199,12 @@ static void gatts_event_handler(esp_gatts_cb_event_t event,
   case ESP_GATTS_WRITE_EVT:
     if (param->write.handle == s_char_time_handle) {
       // Time sync characteristic written
-      if (param->write.len == 4) {
+        if (param->write.len == 4) {
         uint32_t timestamp;
         memcpy(&timestamp, param->write.value, 4);
         ESP_LOGI(TAG, "Time sync request: %" PRIu32, timestamp);
-        logger_set_time(timestamp);
+        struct timeval tv = {.tv_sec = (time_t)timestamp, .tv_usec = 0};
+        settimeofday(&tv, NULL);
 
         esp_ble_gatts_send_response(gatts_if, param->write.conn_id,
                                     param->write.trans_id, ESP_GATT_OK, NULL);
@@ -238,11 +241,14 @@ static void gatts_event_handler(esp_gatts_cb_event_t event,
       char node_id[18];
       size_t used = 0, total = 0;
 
-      logger_get_node_id(node_id, sizeof(node_id));
-      logger_get_storage_usage(&used, &total);
+      uint8_t mac[6];
+      esp_read_mac(mac, ESP_MAC_WIFI_STA);
+      snprintf(node_id, sizeof(node_id), "%02X:%02X:%02X:%02X:%02X:%02X",
+           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+      storage_manager_get_usage(&used, &total);
 
       snprintf(info, sizeof(info), "ID:%s,Used:%u,Total:%u", node_id,
-               (unsigned)used, (unsigned)total);
+           (unsigned)used, (unsigned)total);
 
       esp_gatt_rsp_t rsp = {0};
       rsp.attr_value.len = strlen(info);
@@ -255,7 +261,10 @@ static void gatts_event_handler(esp_gatts_cb_event_t event,
       // Data request: return file size for now (actual data transfer needs
       // streaming)
       char data[32];
-      size_t file_size = logger_get_file_size();
+      size_t file_size = 0, _total = 0;
+      if (storage_manager_get_usage(&file_size, &_total) != ESP_OK) {
+        file_size = 0;
+      }
 
       snprintf(data, sizeof(data), "FileSize:%u", (unsigned)file_size);
 
