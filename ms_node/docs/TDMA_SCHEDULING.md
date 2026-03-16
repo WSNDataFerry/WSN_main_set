@@ -905,7 +905,7 @@ The implementation of the TDMA scheduling and data communication pipeline has be
 
 ### Validation Methodology and Proofs
 
-1. **Strict Slot Adherence**: Log traces confirm that member nodes only transmit data via ESP-NOW during their specifically allocated 10-second TDMA window. No overlapping transmissions or collisions were detected between nodes.
+1. **Strict Slot Adherence**: Log traces confirm that member nodes only transmit data via ESP-NOW during their specifically allocated TDMA window. No overlapping transmissions or collisions were detected between nodes.
    *See full log reference: [transfer_data.log](assets/transfer_data.log)*
 2. **Radio Coexistence Control**: System state logs verify that the firmware strictly disables BLE scanning during the DATA phase. This explicit temporal separation solved the single-radio constraint of the ESP32-S3, virtually eliminating ESP-NOW MAC-layer ACK failures.
 3. **Store-First and Burst Drain Execution**: Local storage logs prove that data is continuously written to the SPIFFS partition in MSLG format, irrespective of network state. During their allocated TDMA slot, nodes successfully execute a burst drain of this historical data to the CH.
