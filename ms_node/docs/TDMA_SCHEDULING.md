@@ -25,7 +25,8 @@
 8. [Neighbor Table Management](#neighbor-table-management)
 9. [Store-First Data Pipeline](#store-first-data-pipeline)
 10. [Timing Constraints and Optimization](#timing-constraints-and-optimization)
-11. [Troubleshooting Guide](#troubleshooting-guide)
+11. [TDMA Testing and Validation](#tdma-testing-and-validation)
+12. [Troubleshooting Guide](#troubleshooting-guide)
 
 ---
 
@@ -895,6 +896,33 @@ esp_err_t burst_drain_mslg_storage(uint64_t slot_end_us) {
     • Remaining 7.9s for additional chunks
     • Storage backlog drains faster than accumulation rate
 ```
+
+---
+
+## TDMA Testing and Validation
+
+The implementation of the TDMA scheduling and data communication pipeline has been extensively tested and verified using a multi-node deployment. The validation confirms the reliability of the store-first data flow and the temporal separation of radio resources.
+
+### Validation Methodology and Proofs
+
+1. **Strict Slot Adherence**: Log traces confirm that member nodes only transmit data via ESP-NOW during their specifically allocated 10-second TDMA window. No overlapping transmissions or collisions were detected between nodes.
+   *See full log reference: [transfer_data.log](assets/transfer_data.log)*
+2. **Radio Coexistence Control**: System state logs verify that the firmware strictly disables BLE scanning during the DATA phase. This explicit temporal separation solved the single-radio constraint of the ESP32-S3, virtually eliminating ESP-NOW MAC-layer ACK failures.
+3. **Store-First and Burst Drain Execution**: Local storage logs prove that data is continuously written to the SPIFFS partition in MSLG format, irrespective of network state. During their allocated TDMA slot, nodes successfully execute a burst drain of this historical data to the CH.
+   *See full log reference: [storage_data.log](assets/storage_data.log)*
+4. **Data Communication Reliability**: Because the TDMA algorithm prevents collisions and the burst drain mechanism offloads backlogged data, the system achieves a highly robust Packet Delivery Ratio (PDR). During stability testing, recovering nodes successfully transmitted large bursts of accumulated sensor readings without loss.
+
+### Experimental Results
+
+The efficiency and stability of the system are visually corroborated by the collected experimental data:
+
+* **Data Transfer Over Time**: Validates the consistent flow of ESP-NOW packets and confirms the burst-based transmission characteristics of the TDMA schedule.
+  
+  ![Data Transfer](assets/data_transfer.png)
+
+* **Storage Usage Trends**: Demonstrates the accumulation of sensor data in local SPIFFS storage during STELLAR phases and sleep periods, followed by rapid depletion (drain) during the actively allocated TDMA slots.
+  
+  ![Storage Usage](assets/storage_usage.png)
 
 ---
 
